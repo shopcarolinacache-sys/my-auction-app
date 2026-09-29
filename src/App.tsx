@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import AnnouncementBar from '@/components/AnnouncementBar';
-import Navbar from '@/components/Navbar';
-import Hero from '@/components/Hero';
-import CategoryGrid from '@/components/CategoryGrid';
-import ProductGrid from '@/components/ProductGrid';
-import Footer from '@/components/Footer';
-import type { CategoryId } from '@/types';
+import AnnouncementBar from './components/AnnouncementBar';
+import Navbar from './components/Navbar';
+import Hero from './components/Hero';
+import CategoryGrid from './components/CategoryGrid';
+import { ProductGrid } from './components/ProductGrid';
+import Footer from './components/Footer';
+import AuctionTools from './components/AuctionTools';
+import { CategoryId } from './types';
 
 export default function App() {
-  const [activeCategory, setActiveCategory] = useState<CategoryId | 'all'>('all');
+  const [activeCategory, setActiveCategory] = useState<CategoryId>('all');
 
   const handleCategorySelect = (id: CategoryId) => {
     setActiveCategory(id);
@@ -23,6 +24,7 @@ export default function App() {
         <Hero />
         <CategoryGrid onSelect={handleCategorySelect} />
         <ProductGrid active={activeCategory} onFilter={setActiveCategory} />
+        <AuctionTools />
       </main>
       <Footer />
     </div>

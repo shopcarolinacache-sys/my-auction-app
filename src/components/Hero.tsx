@@ -1,4 +1,5 @@
 import { ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Hero() {
   return (
@@ -17,19 +18,19 @@ export default function Hero() {
             Carolina Cache is your destination for authenticated collectibles.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4">
-            <a
-              href="#shop"
+            <Link
+              href="/drops/volume-09"
               className="group inline-flex items-center justify-center gap-2 bg-neutral-900 text-white px-8 py-4 text-sm font-semibold tracking-wide uppercase hover:bg-emerald-700 transition-all duration-300"
             >
               Shop the Drop
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-            </a>
-            <a
+            </Link>
+            <Link
               href="#categories"
               className="inline-flex items-center justify-center gap-2 border border-neutral-300 text-neutral-900 px-8 py-4 text-sm font-semibold tracking-wide uppercase hover:border-neutral-900 transition-all duration-300"
             >
               Browse Categories
-            </a>
+            </Link>
           </div>
         </div>
       </div>

@@ -1,106 +1,48 @@
-import type { Product, Category } from '@/types';
+import { type Product, type CategoryId } from '../types';
 
-export const categories: Category[] = [
-  {
-    id: 'cards',
-    title: 'Trading Cards',
-    subtitle: 'Vintage & modern grails',
-    image: 'https://images.pexels.com/photos/9661252/pexels-photo-9661252.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  },
-  {
-    id: 'toys',
-    title: 'Action Figures & Toys',
-    subtitle: 'Sealed, graded & rare',
-    image: 'https://images.pexels.com/photos/6390193/pexels-photo-6390193.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  },
-  {
-    id: 'electronics',
-    title: 'Premium Electronics',
-    subtitle: 'Refurbished & tested',
-    image: 'https://images.pexels.com/photos/13650607/pexels-photo-13650607.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-  },
+export interface Filter {
+  label: string;
+  value: CategoryId | 'all';
+}
+
+export const filters: Filter[] = [
+  { label: 'All Items', value: 'all' },
+  { label: 'Trading Cards', value: 'cards' },
+  { label: 'Action Figures & Toys', value: 'toys' }
 ];
 
 export const products: Product[] = [
   {
-    id: 'p1',
-    name: 'Charizard Base Set Holo',
-    price: 1200,
-    image: 'https://images.pexels.com/photos/9661252/pexels-photo-9661252.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+    id: '1',
+    name: '1999 Base Set Charizard Holo',
+    description: 'PSA 9 Mint Condition Base Set Charizard First Edition Shadowless Holo.',
+    price: 3200,
+    category: 'cards',
+    categoryLabel: 'Trading Cards',
+    condition: 'Mint',
+    stock: 'In Stock',
+    image: '/products/trading-card.png'
+  },
+  {
+    id: '2',
+    name: 'Vintage Star Wars Boba Fett Figure',
+    description: '1980 Kenner Star Wars Empire Strikes Back Boba Fett loose action figure with original blaster.',
+    price: 450,
+    category: 'toys',
+    categoryLabel: 'Action Figures & Toys',
+    condition: 'Excellent',
+    stock: 'Low Stock',
+    image: '/products/action-figure.png'
+  },
+  {
+    id: '3',
+    name: '1986 Fleer Michael Jordan Rookie Card',
+    description: 'BGS 9.5 Gem Mint Michael Jordan Rookie Card #57. Iconic collectors piece.',
+    price: 7500,
+    category: 'cards',
+    categoryLabel: 'Trading Cards',
     condition: 'Near Mint',
     stock: 'In Stock',
-    category: 'cards',
-  },
-  {
-    id: 'p2',
-    name: 'Yu-Gi-Oh! Legend Collection',
-    price: 340,
-    image: 'https://images.pexels.com/photos/16321207/pexels-photo-16321207.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-    condition: 'Mint',
-    stock: 'Low Stock',
-    category: 'cards',
-  },
-  {
-    id: 'p3',
-    name: 'Vintage Card Fan Bundle',
-    price: 89,
-    image: 'https://images.pexels.com/photos/11854580/pexels-photo-11854580.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-    condition: 'Lightly Played',
-    stock: 'In Stock',
-    category: 'cards',
-  },
-  {
-    id: 'p4',
-    name: 'The Mandalorian Baby Yoda Figure',
-    price: 65,
-    image: 'https://images.pexels.com/photos/7499839/pexels-photo-7499839.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-    condition: 'Mint',
-    stock: 'In Stock',
-    category: 'toys',
-  },
-  {
-    id: 'p5',
-    name: 'Designer Alien Figure',
-    price: 140,
-    image: 'https://images.pexels.com/photos/5558237/pexels-photo-5558237.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-    condition: 'Excellent',
-    stock: 'Low Stock',
-    category: 'toys',
-  },
-  {
-    id: 'p6',
-    name: 'Super Nintendo Retro Controller',
-    price: 75,
-    image: 'https://images.pexels.com/photos/37935954/pexels-photo-37935954.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-    condition: 'Refurbished',
-    stock: 'In Stock',
-    category: 'electronics',
-  },
-  {
-    id: 'p7',
-    name: 'PlayStation Glow Controller',
-    price: 110,
-    image: 'https://images.pexels.com/photos/16070479/pexels-photo-16070479.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-    condition: 'Refurbished',
-    stock: 'Sold Out',
-    category: 'electronics',
-  },
-  {
-    id: 'p8',
-    name: 'JBL Studio Headphones',
-    price: 220,
-    image: 'https://images.pexels.com/photos/13650607/pexels-photo-13650607.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-    condition: 'Excellent',
-    stock: 'In Stock',
-    category: 'electronics',
-  },
-  {
-    id: 'p9',
-    name: 'Pro Camera Drone',
-    price: 899,
-    image: 'https://images.pexels.com/photos/6624608/pexels-photo-6624608.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
-    condition: 'Refurbished',
-    stock: 'Low Stock',
-    category: 'electronics',
-  },
+    image: '/products/trading-card.png'
+  }
 ];
