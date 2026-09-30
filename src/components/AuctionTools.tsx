@@ -1,3 +1,4 @@
+javascript
 "use client";
 
 import React, { useState } from 'react';
@@ -12,7 +13,7 @@ const auctions = [
     currentBid: 3100,
     bidsCount: 14,
     endsIn: '2h 15m',
-    image: 'https://unsplash.com',
+    image: '/products/trading-card.png',
     condition: 'Near Mint',
     categoryLabel: 'Trading Cards',
     location: 'Los Angeles, CA'
@@ -24,7 +25,7 @@ const auctions = [
     currentBid: 780,
     bidsCount: 19,
     endsIn: '5h 45m',
-    image: 'https://unsplash.com',
+    image: '/products/action-figure.png',
     condition: 'Excellent',
     categoryLabel: 'Toys',
     location: 'New York, NY'
@@ -36,7 +37,7 @@ const auctions = [
     currentBid: 6200,
     bidsCount: 8,
     endsIn: '1d 3h',
-    image: 'https://unsplash.com',
+    image: '/products/trading-card.png',
     condition: 'Mint',
     categoryLabel: 'Trading Cards',
     location: 'Chicago, IL'
@@ -52,7 +53,7 @@ export default function AuctionTools() {
         </h2>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-y-12 sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-3 xl:gap-x-8">
+      <div className="mt-8 grid grid-cols-1 gap-y-12 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:gap-x-8">
         {auctions.map((item: any) => {
           const normalizedProduct = {
             ...item,
@@ -72,3 +73,4 @@ export default function AuctionTools() {
     </section>
   );
 }
+

@@ -34,7 +34,8 @@ export function ProductGrid({ active, onFilter }: ProductGridProps) {
         </h2>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-y-12 sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-4 xl:gap-x-8">
+      {/* Updated grid to enforce 3 columns on medium screens, and 4 on large/extra large */}
+      <div className="mt-8 grid grid-cols-1 gap-y-12 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:gap-x-8">
         {filteredProducts.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
@@ -42,3 +43,4 @@ export function ProductGrid({ active, onFilter }: ProductGridProps) {
     </section>
   );
 }
+
