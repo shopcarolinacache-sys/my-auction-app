@@ -1,11 +1,11 @@
 'use server'
 
 import { headers } from 'next/headers'
-import { products } from '../../src/data/products';
+import { products } from '@/data/products'
 import { stripe } from '@/lib/stripe'
 
 export async function createCheckoutSession(productId: string) {
-  const product = products.find((item: any) => item.id === productId)
+  const product = products.find((item) => item.id === productId)
   if (!product || product.stock === 'Sold Out') {
     throw new Error('This product is unavailable.')
   }

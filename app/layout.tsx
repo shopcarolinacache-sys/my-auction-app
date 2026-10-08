@@ -1,15 +1,26 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { CartProvider } from '@/components/cart-drawer'
+
+const siteUrl = 'https://carolinacache.com'
+const siteTitle = 'Carolina Cache | Rare Collectibles & Vintage Finds'
+const siteDescription = 'Shop rare trading cards, vintage toys, electronics, stamps, postcards, and curious objects at Carolina Cache.'
 
 export const metadata: Metadata = {
-  title: 'Shop Carolina Cache — Premium Collectibles & Electronics',
-  description: 'Shop Carolina Cache for premium collectible trading cards, vintage toys, and electronics.',
-  keywords: ['collectible trading cards', 'vintage toys', 'electronics', 'Carolina Cache'],
+  metadataBase: new URL(siteUrl),
+  title: { default: siteTitle, template: '%s | Carolina Cache' },
+  description: siteDescription,
+  keywords: ['rare collectibles', 'vintage collectibles', 'trading cards', 'stamps', 'postcards', 'vintage toys', 'Carolina Cache'],
+  alternates: { canonical: '/' },
+  robots: { index: true, follow: true },
   openGraph: {
     title: 'Shop Carolina Cache — Premium Collectibles & Electronics',
     description: 'Premium collectible trading cards, vintage toys, and electronics curated for collectors.',
     type: 'website',
+    url: siteUrl,
+    siteName: 'Carolina Cache',
+    images: [{ url: '/products/trading-card.png', width: 1200, height: 630, alt: 'Carolina Cache rare collectibles' }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -52,7 +63,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        {children}
+        <CartProvider>
+          {children}
+        </CartProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
