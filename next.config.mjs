@@ -1,9 +1,6 @@
-/** @type {import('next').NextConfig} */
+/** @type {import('next').NextJSConfig} */
 const nextConfig = {
-  output: 'export', // Forces Next.js to generate a standalone "out" folder
-  images: {
-    unoptimized: true, // Required for static exporting
-  },
+  /* config options here */
 };
 
 export default nextConfig;
