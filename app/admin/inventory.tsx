@@ -29,4 +29,4 @@ export interface InventoryItem {
   status: 'IN_STOCK' | 'OUT_OF_STOCK' | 'LOW_STOCK';
 }
 
-const INITIAL_INVENTORY: InventoryItem[] =
+const INITIAL_INVENTORY: InventoryItem[] = [];
