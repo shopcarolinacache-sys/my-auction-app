@@ -76,6 +76,7 @@ const INITIAL_AUCTIONS: AuctionItem[] = [
 ];
 
 export default function AdminWorkspacePage() {
+  const [activeSection, setActiveSection] = useState('Auctions');
   const [items, setItems] = useState<AuctionItem[]>(INITIAL_AUCTIONS);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -201,27 +202,25 @@ export default function AdminWorkspacePage() {
           </div>
         </div>
 
-        <nav className="flex-1 space-y-2 text-sm font-medium">
-          <a href="#" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-neutral-400 hover:bg-neutral-900 hover:text-white transition">
-            <ShoppingBag className="w-4 h-4" />
-            <span>Overview</span>
-          </a>
-          <a href="#" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-neutral-400 hover:bg-neutral-900 hover:text-white transition">
-            <ShoppingBag className="w-4 h-4" />
-            <span>Inventory</span>
-          </a>
-          <a href="#" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-neutral-400 hover:bg-neutral-900 hover:text-white transition">
-            <ShoppingBag className="w-4 h-4" />
-            <span>Orders</span>
-          </a>
-          <a href="#" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-emerald-500 text-black font-semibold">
-            <Gavel className="w-4 h-4" />
-            <span>Auctions</span>
-          </a>
-          <a href="#" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-neutral-400 hover:bg-neutral-900 hover:text-white transition">
-            <Users className="w-4 h-4" />
-            <span>Customers</span>
-          </a>
+        <nav aria-label="Admin sections" className="flex-1 space-y-2 text-sm font-medium">
+          {[
+            { label: 'Overview', icon: ShoppingBag },
+            { label: 'Inventory', icon: ShoppingBag },
+            { label: 'Orders', icon: ShoppingBag },
+            { label: 'Auctions', icon: Gavel },
+            { label: 'Customers', icon: Users },
+          ].map(({ label, icon: Icon }) => (
+            <button
+              key={label}
+              type="button"
+              aria-current={activeSection === label ? 'page' : undefined}
+              onClick={() => setActiveSection(label)}
+              className={`flex w-full items-center space-x-3 px-3 py-2.5 rounded-lg transition ${activeSection === label ? 'bg-emerald-500 text-black font-semibold' : 'text-neutral-400 hover:bg-neutral-900 hover:text-white'}`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{label}</span>
+            </button>
+          ))}
         </nav>
 
         <div className="border-t border-neutral-800 pt-4">
@@ -231,6 +230,7 @@ export default function AdminWorkspacePage() {
 
       {/* Main Workspace */}
       <main className="flex-1 p-8 space-y-8 overflow-y-auto">
+        {activeSection === 'Auctions' ? <>
         {/* Top Header */}
         <div className="flex justify-between items-center">
           <div>
@@ -381,6 +381,12 @@ export default function AdminWorkspacePage() {
             </table>
           </div>
         </div>
+        </> : <section aria-live="polite" className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+          <h2 className="text-3xl font-extrabold text-neutral-900">{activeSection}</h2>
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-neutral-600">
+            This section is not configured yet. Your existing auction workspace is available in the Auctions tab.
+          </p>
+        </section>}
       </main>
 
       {/* Modal Form for Add/Edit */}
