@@ -1,16 +1,35 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowUpRight, Search, UserRound } from 'lucide-react'
+import { ArrowUpRight, Search, UserRound, ShieldCheck, LogOut, PencilLine } from 'lucide-react'
+import { useAdminAuth } from '@/components/admin-auth'
 import { categoryCards, marketingHooks } from '@/data/storefront'
 import { CartButton } from '@/components/cart-drawer'
 
 export function StorefrontHeader() {
+  const { authenticated, openModal, logout } = useAdminAuth()
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+
+  const toggleEditMode = () => {
+    const next = !editMode
+    setEditMode(next)
+    document.body.dataset.adminEditMode = String(next)
+    document.querySelectorAll<HTMLElement>('main h1, main h2, main h3, main p').forEach((element) => {
+      element.contentEditable = String(next)
+      element.classList.toggle('outline-dashed', next)
+      element.classList.toggle('outline-emerald-500', next)
+      element.classList.toggle('outline-offset-2', next)
+      element.setAttribute('aria-label', next ? 'Editable site text' : '')
+    })
+  }
+
   return <header className="sticky top-0 z-30 border-b border-neutral-200 bg-[#f7f7f4]/95 backdrop-blur">
     <div className="mx-auto flex max-w-7xl items-center gap-5 px-5 py-4 sm:px-8 lg:px-10">
       <a href="#top" className="shrink-0 font-serif text-2xl font-black tracking-[-0.07em] sm:text-3xl">Carolina <span className="text-emerald-700">Cache</span></a>
       <div className="hidden flex-1 md:block"><label className="mx-auto flex max-w-xl items-center gap-3 border border-neutral-300 bg-white px-4 py-2.5 text-sm"><Search className="size-4 text-neutral-500" /><input aria-label="Search inventory" placeholder="Search the archive" className="w-full bg-transparent outline-none placeholder:text-neutral-400" /><span className="border-l border-neutral-200 pl-3 text-[10px] font-bold uppercase tracking-widest text-neutral-400">All</span></label></div>
-      <nav className="ml-auto flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.14em] sm:gap-6"><a className="hidden hover:text-emerald-700 sm:block" href="#categories">Shop</a><a className="hidden hover:text-emerald-700 sm:block" href="#request">Source</a><button aria-label="Account"><UserRound className="size-4" /></button><CartButton /></nav>
+      <nav className="ml-auto flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.14em] sm:gap-6"><a className="hidden hover:text-emerald-700 sm:block" href="#categories">Shop</a><a className="hidden hover:text-emerald-700 sm:block" href="#request">Source</a><div className="relative"><button type="button" aria-label="Account" aria-haspopup="true" aria-expanded={profileOpen} onClick={() => authenticated ? setProfileOpen((current) => !current) : openModal()} className="grid size-9 place-items-center border border-neutral-300 bg-white text-neutral-700 transition hover:border-emerald-700 hover:text-emerald-800"><UserRound className="size-4" />{authenticated && <span className="absolute right-0 top-0 size-2 rounded-full bg-emerald-500" />}</button>{authenticated && profileOpen && <div className="absolute right-0 top-full z-40 mt-3 w-60 border border-neutral-200 bg-white p-2 text-neutral-900 shadow-xl"><div className="flex items-center gap-2 border-b border-neutral-100 px-3 py-3"><ShieldCheck className="size-4 text-emerald-700" /><span className="text-xs font-bold normal-case tracking-normal">Admin Mode</span></div><button type="button" onClick={toggleEditMode} className="flex w-full items-center gap-2 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal hover:bg-neutral-50"><PencilLine className="size-4" />{editMode ? 'Turn off inline editing' : 'Edit site content inline'}</button><Link href="/admin" onClick={() => setProfileOpen(false)} className="block px-3 py-3 text-xs font-semibold normal-case tracking-normal hover:bg-neutral-50">Open Admin Panel</Link><button type="button" onClick={() => { logout(); setProfileOpen(false); setEditMode(false); delete document.body.dataset.adminEditMode; document.querySelectorAll<HTMLElement>('main h1, main h2, main h3, main p').forEach((element) => { element.contentEditable = 'false'; element.classList.remove('outline-dashed', 'outline-emerald-500', 'outline-offset-2') }) }} className="flex w-full items-center gap-2 border-t border-neutral-100 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-neutral-500 hover:text-neutral-900"><LogOut className="size-4" />Sign out</button></div>}</div><CartButton /></nav>
     </div>
   </header>
 }
