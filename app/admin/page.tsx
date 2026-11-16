@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import InventoryManagement from './inventory';
 import { 
   DollarSign, 
   ShoppingBag, 
@@ -225,12 +227,13 @@ export default function AdminWorkspacePage() {
 
         <div className="border-t border-neutral-800 pt-4">
           <button className="text-xs text-neutral-400 hover:text-white">Sign out</button>
+          <Link href="/" className="mt-3 block text-xs font-semibold text-emerald-300 hover:text-white">View storefront</Link>
         </div>
       </aside>
 
       {/* Main Workspace */}
       <main className="flex-1 p-8 space-y-8 overflow-y-auto">
-        {activeSection === 'Auctions' ? <>
+        {activeSection === 'Inventory' ? <InventoryManagement /> : activeSection === 'Auctions' ? <>
         {/* Top Header */}
         <div className="flex justify-between items-center">
           <div>
