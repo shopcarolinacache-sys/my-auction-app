@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import InventoryManagement from './inventory';
 import AdminOrders from '@/components/admin-orders';
+import AdminOverview from '@/components/admin-overview';
 import { 
   DollarSign, 
   ShoppingBag, 
@@ -234,7 +235,7 @@ export default function AdminWorkspacePage() {
 
       {/* Main Workspace */}
       <main className="flex-1 p-8 space-y-8 overflow-y-auto">
-        {activeSection === 'Inventory' ? <InventoryManagement /> : activeSection === 'Orders' ? <AdminOrders /> : activeSection === 'Auctions' ? <>
+        {activeSection === 'Overview' ? <AdminOverview onNavigate={setActiveSection} /> : activeSection === 'Inventory' ? <InventoryManagement /> : activeSection === 'Orders' ? <AdminOrders /> : activeSection === 'Auctions' ? <>
         {/* Top Header */}
         <div className="flex justify-between items-center">
           <div>
