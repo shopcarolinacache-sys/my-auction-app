@@ -24,9 +24,9 @@ export const marketingHooks = [
 
 export const mediaWins = [
   { image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=800&q=85', label: 'SOLD for $250' },
-  { image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=85', label: 'Won by UserX!' },
+  { image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=85', label: 'Won by J***n' },
   { image: 'https://images.unsplash.com/photo-1594784051410-6f2c7e1c2c31?auto=format&fit=crop&w=800&q=85', label: 'SOLD for $95' },
-  { image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=800&q=85', label: 'Won by Maya!' },
+  { image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=800&q=85', label: 'Won by T***r' },
 ]
 
 export const auctionVideos = [

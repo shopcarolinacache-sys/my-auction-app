@@ -2,6 +2,8 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { CartProvider } from '@/components/cart-drawer'
+import { AdminAuthProvider } from '@/components/admin-auth'
+import { InventoryProvider } from '@/components/inventory-store'
 
 const siteUrl = 'https://carolinacache.com'
 const siteTitle = 'Carolina Cache | Rare Collectibles & Vintage Finds'
@@ -63,9 +65,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <CartProvider>
-          {children}
-        </CartProvider>
+        <AdminAuthProvider>
+          <InventoryProvider>
+            <CartProvider>
+              {children}
+            </CartProvider>
+          </InventoryProvider>
+        </AdminAuthProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
