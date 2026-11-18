@@ -1,0 +1,5 @@
+'use client'
+
+export function SiteVideoShowcase() {
+  return <section data-site-video aria-labelledby="site-video-heading" className="border-t border-neutral-200 bg-neutral-950 px-5 py-16 text-white sm:px-8 lg:px-10"><div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[0.7fr_1fr] md:items-center"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400">Featured film</p><h2 data-video-title id="site-video-heading" className="mt-3 text-3xl font-black tracking-tight">The archive, in motion</h2><p data-video-caption className="mt-3 max-w-md text-sm leading-relaxed text-neutral-300">A closer look at the pieces behind the collection.</p></div><div className="aspect-video w-full bg-black"><video data-video-player controls playsInline preload="metadata" hidden className="size-full"><source /></video><iframe data-video-embed title="Featured Carolina Cache video" hidden allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen className="size-full border-0" /></div></div></section>
+}
