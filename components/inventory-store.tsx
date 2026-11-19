@@ -6,6 +6,7 @@ import { products, type Category, type Product, type Stock } from '@/data/produc
 import { getBrowserSupabase } from '@/lib/supabase-browser'
 
 export type ListingStatus = 'Available' | 'Sold' | 'Draft'
+export const SHIPPING_PRESETS = [{ id: 'flat', label: 'Flat Mailer (8 oz - 11x9x1)', tier: 'Flat Mailer', w: 8, l: 11, wd: 9, h: 1 }, { id: 'small', label: 'Small Box (16 oz - 10x8x4)', tier: 'Standard Box (1 lb)', w: 16, l: 10, wd: 8, h: 4 }, { id: 'med', label: 'Medium Box (48 oz - 14x12x6)', tier: 'Medium Box (3 lb)', w: 48, l: 14, wd: 12, h: 6 }, { id: 'large', label: 'Large Box (96 oz - 18x14x10)', tier: 'Large Box (6 lb)', w: 96, l: 18, wd: 14, h: 10 }]
 export type InventoryItem = Product & { quantity: number; listingStatus: ListingStatus; createdAt: string }
 
 type NewInventoryItem = {
@@ -39,7 +40,7 @@ function fromDatabase(row: any): InventoryItem {
 }
 
 function toDatabase(item: InventoryItem | NewInventoryItem) {
-  return { title: item.title, description: item.description, price: item.price, category: item.category, condition: 'condition' in item ? item.condition : 'Excellent', stock: item.quantity, status: item.listingStatus === 'Draft' ? 'draft' : item.listingStatus === 'Sold' ? 'sold' : 'active', images: [item.image || '/products/trading-card.png'], section_placement: 'collection' }
+  return { title: item.title, description: item.description, price: item.price, category: item.category, condition: 'condition' in item ? item.condition : 'Excellent', stock: item.quantity, status: item.listingStatus === 'Draft' ? 'draft' : item.listingStatus === 'Sold' ? 'sold' : 'active', images: [item.image || '/products/trading-card.png'], section_placement: 'collection', weight_oz: (item as any).weight_oz ?? 16, length_in: (item as any).length_in ?? 10, width_in: (item as any).width_in ?? 8, height_in: (item as any).height_in ?? 4, shipping_tier: (item as any).shipping_tier ?? 'Standard Box (1 lb)' }
 }
 
 const categoryLabels: Record<Category, string> = {
@@ -211,6 +212,7 @@ function InventoryEditorDialog({ item, defaultCategory, notify, onClose, onSave 
   const [quantity, setQuantity] = useState(item ? String(item.quantity) : '1')
   const [listingStatus, setListingStatus] = useState<ListingStatus>(item?.listingStatus ?? 'Available')
   const [image, setImage] = useState(item?.image ?? '')
+  const [presetId, setPresetId] = useState(SHIPPING_PRESETS.find((p) => p.tier === (item as any)?.shipping_tier)?.id ?? 'small')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -242,7 +244,7 @@ function InventoryEditorDialog({ item, defaultCategory, notify, onClose, onSave 
       setError('Enter an item title, a valid price, and a whole-number quantity of zero or more.')
       return
     }
-    onSave({ title: title.trim(), description: description.trim(), price: Math.round(parsedPrice * 100) / 100, category, quantity: parsedQuantity, listingStatus, image })
+    const pr = SHIPPING_PRESETS.find((p) => p.id === presetId) ?? SHIPPING_PRESETS[1]; onSave({ title: title.trim(), description: description.trim(), price: Math.round(parsedPrice * 100) / 100, category, quantity: parsedQuantity, listingStatus, image, weight_oz: pr.w, length_in: pr.l, width_in: pr.wd, height_in: pr.h, shipping_tier: pr.tier } as any)
   }
 
   return <div className="fixed inset-0 z-[120] flex items-center justify-center bg-neutral-950/60 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
@@ -254,7 +256,7 @@ function InventoryEditorDialog({ item, defaultCategory, notify, onClose, onSave 
         <label><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-neutral-600">Price</span><input type="number" required min="0" step="0.01" value={price} onChange={(event) => setPrice(event.target.value)} className="w-full border border-neutral-300 bg-white px-3 py-3 text-sm outline-none focus:border-emerald-700" /></label>
         <label><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-neutral-600">Quantity</span><input type="number" required min="0" step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} className="w-full border border-neutral-300 bg-white px-3 py-3 text-sm outline-none focus:border-emerald-700" /></label>
         <label><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-neutral-600">Category</span><select value={category} onChange={(event) => setCategory(event.target.value as Category)} className="w-full border border-neutral-300 bg-white px-3 py-3 text-sm outline-none focus:border-emerald-700">{categories.map((entry) => <option key={entry.value} value={entry.value}>{entry.label}</option>)}</select></label>
-        <label><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-neutral-600">Status</span><select value={listingStatus} onChange={(event) => setListingStatus(event.target.value as ListingStatus)} className="w-full border border-neutral-300 bg-white px-3 py-3 text-sm outline-none focus:border-emerald-700"><option>Available</option><option>Sold</option><option>Draft</option></select></label>
+        <label><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-neutral-600">Status</span><select value={listingStatus} onChange={(event) => setListingStatus(event.target.value as ListingStatus)} className="w-full border border-neutral-300 bg-white px-3 py-3 text-sm outline-none focus:border-emerald-700"><option>Available</option><option>Sold</option><option>Draft</option></select></label><label className='sm:col-span-2'><span className='mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-neutral-600'>Shipping Package Preset</span><select value={presetId} onChange={(e) => setPresetId(e.target.value)} className='w-full border border-neutral-300 bg-white px-3 py-3 text-sm outline-none focus:border-emerald-700'>{SHIPPING_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>
         <div className="sm:col-span-2"><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-neutral-600">Product image · browser preview only</span><label className="flex cursor-pointer items-center gap-4 border border-dashed border-neutral-300 bg-white p-3 hover:border-emerald-700"><span className="grid size-16 shrink-0 place-items-center overflow-hidden bg-neutral-100">{image ? <img src={image} alt="Selected product preview" className="size-full object-cover" /> : <ImagePlus className="size-5 text-neutral-400" />}</span><span className="text-xs font-bold">{busy ? 'Preparing preview…' : 'Choose an image'}<span className="mt-1 block font-normal text-neutral-500">JPEG, PNG, WebP · up to 5 MB. Not uploaded to storage.</span></span><input type="file" accept="image/*" onChange={handleImage} className="sr-only" /></label></div>
         {error && <p role="alert" className="sm:col-span-2 border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
         <div className="flex justify-end gap-3 border-t border-neutral-200 pt-4 sm:col-span-2"><button type="button" onClick={onClose} className="border border-neutral-300 bg-white px-4 py-3 text-xs font-bold uppercase tracking-wider">Cancel</button><button disabled={busy} type="submit" className="bg-neutral-950 px-5 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-emerald-700 disabled:opacity-50">{item ? 'Save changes' : 'Add item'}</button></div>
