@@ -2,12 +2,17 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check, LockKeyhole, ShieldCheck } from 'lucide-react'
 import { useCart } from '@/components/cart-drawer'
 
 export default function CheckoutPage() {
-  const { lines, subtotal } = useCart()
+  const router = useRouter()
+  const { lines, subtotal, remove } = useCart()
 
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
   const [street, setStreet] = useState('')
   const [city, setCity] = useState('')
   const [stateCode, setStateCode] = useState('')
@@ -16,7 +21,10 @@ export default function CheckoutPage() {
   const protectionFee = subtotal > 100 ? Math.max(1, Math.ceil(subtotal * 0.01)) : 0
   const [baseShipping, setBaseShipping] = useState<number>(18)
   const [carrierLabel, setCarrierLabel] = useState<string>('Enter State & ZIP for live rate')
+  const [carrierInfo, setCarrierInfo] = useState({ carrier: 'Standard', service: 'Insured' })
   const [isCalculating, setIsCalculating] = useState<boolean>(false)
+  const [submitting, setSubmitting] = useState<boolean>(false)
+  const [submitError, setSubmitError] = useState<string>('')
 
   const calculateShipping = useCallback(async () => {
     const cleanZip = zip.trim().slice(0, 5)
@@ -53,9 +61,17 @@ export default function CheckoutPage() {
         setCarrierLabel(
           data.fallback ? 'Standard flat rate' : `${data.carrier} ${data.service}`
         )
+        setCarrierInfo({
+          carrier: data.carrier || 'Standard',
+          service: data.service || 'Insured',
+        })
       } else if (typeof data.rate === 'number') {
         setBaseShipping(Math.max(0, data.rate - (data.protectionFee || 0)))
         setCarrierLabel(`${data.carrier} ${data.service}`)
+        setCarrierInfo({
+          carrier: data.carrier || 'Standard',
+          service: data.service || 'Insured',
+        })
       }
     } catch (error) {
       console.error('Failed to fetch shipping rate:', error)
@@ -81,6 +97,54 @@ export default function CheckoutPage() {
 
   const total = subtotal + baseShipping + protectionFee
 
+  async function handleOrderSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (lines.length === 0 || submitting) return
+
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim()
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_name: fullName,
+          customer_email: email.trim(),
+          shipping_address: {
+            name: fullName,
+            street1: street.trim(),
+            city: city.trim(),
+            state: stateCode.trim().toUpperCase(),
+            zip: zip.trim().slice(0, 5),
+            country: 'US',
+          },
+          items: lines.map(({ product, quantity }) => ({
+            id: product.id,
+            name: product.name || product.title,
+            price: product.price,
+            quantity,
+          })),
+          subtotal,
+          shipping_cost: baseShipping,
+          protection_fee: protectionFee,
+          total,
+          shipping_carrier: carrierInfo.carrier,
+          shipping_service: carrierInfo.service,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not place order.')
+
+      lines.forEach(({ product }) => remove(product.id))
+      router.push(`/success?order=${encodeURIComponent(data.order?.order_number || '')}`)
+    } catch (err: any) {
+      setSubmitError(err?.message || 'Failed to place order.')
+      setSubmitting(false)
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#f7f7f4] text-neutral-950">
       <header className="border-b border-neutral-200 bg-white px-5 py-5 sm:px-8">
@@ -102,14 +166,14 @@ export default function CheckoutPage() {
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-700">Collection checkout</p>
           <h1 className="mt-3 text-5xl font-black tracking-[-0.07em] sm:text-7xl">Complete your acquisition.</h1>
 
-          <form className="mt-10 space-y-8" onSubmit={(event) => event.preventDefault()}>
+          <form className="mt-10 space-y-8" onSubmit={handleOrderSubmit}>
             <fieldset className="space-y-4">
               <legend className="text-lg font-black">01 / Shipping details</legend>
               <div className="grid gap-3 sm:grid-cols-2">
-                <input required placeholder="First name" aria-label="First name" className="border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
-                <input required placeholder="Last name" aria-label="Last name" className="border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
+                <input required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" aria-label="First name" className="border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
+                <input required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" aria-label="Last name" className="border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
               </div>
-              <input required type="email" placeholder="Email address" aria-label="Email address" className="w-full border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
+              <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" aria-label="Email address" className="w-full border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
               <input required value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Shipping address" aria-label="Shipping address" className="w-full border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
               <div className="grid gap-3 sm:grid-cols-3">
                 <input required value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" aria-label="City" className="border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
@@ -127,8 +191,14 @@ export default function CheckoutPage() {
               </div>
             </fieldset>
 
-            <button type="submit" className="w-full bg-neutral-950 px-5 py-4 text-xs font-black uppercase tracking-[0.16em] text-white transition hover:bg-emerald-700">
-              Place secure order <Check className="ml-2 inline size-4" />
+            {submitError && (
+              <p role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {submitError}
+              </p>
+            )}
+
+            <button type="submit" disabled={submitting || lines.length === 0} className="w-full bg-neutral-950 px-5 py-4 text-xs font-black uppercase tracking-[0.16em] text-white transition hover:bg-emerald-700 disabled:opacity-50">
+              {submitting ? 'Processing order...' : 'Place secure order'} <Check className="ml-2 inline size-4" />
             </button>
           </form>
         </section>

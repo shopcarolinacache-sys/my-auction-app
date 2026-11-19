@@ -1,0 +1,112 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const {
+      customer_name,
+      customer_email,
+      shipping_address,
+      items = [],
+      subtotal = 0,
+      shipping_cost = 0,
+      protection_fee = 0,
+      total = 0,
+      shipping_carrier = "Standard",
+      shipping_service = "Insured",
+    } = body;
+
+    if (!customer_name || !customer_email || !shipping_address?.zip) {
+      return NextResponse.json({ error: "Missing required customer or shipping fields." }, { status: 400 });
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/['"]/g, "").trim();
+    const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.replace(/['"]/g, "").trim();
+
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json({ error: "Supabase credentials not configured." }, { status: 500 });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    let totalWeightOz = 0;
+    let maxLength = 10;
+    let maxWidth = 8;
+    let totalHeight = 0;
+
+    const ids = items.map((i: any) => i.id).filter((id: string) => id && !id.startsWith("local-"));
+    if (ids.length > 0) {
+      const { data: products } = await supabase
+        .from("products")
+        .select("id, stock, weight_oz, length_in, width_in, height_in")
+        .in("id", ids);
+
+      if (products && products.length > 0) {
+        for (const item of items) {
+          const qty = Number(item.quantity || 1);
+          const p = products.find((prod: any) => prod.id === item.id);
+          totalWeightOz += Number(p?.weight_oz || 16) * qty;
+          maxLength = Math.max(maxLength, Number(p?.length_in || 10));
+          maxWidth = Math.max(maxWidth, Number(p?.width_in || 8));
+          totalHeight += Number(p?.height_in || 4) * qty;
+
+          if (p) {
+            const newStock = Math.max(0, Number(p.stock || 0) - qty);
+            await supabase
+              .from("products")
+              .update({
+                stock: newStock,
+                status: newStock === 0 ? "sold" : "active",
+              })
+              .eq("id", p.id);
+          }
+        }
+      }
+    }
+
+    if (totalWeightOz <= 0) totalWeightOz = Math.max(1, items.length) * 16;
+    if (totalHeight <= 0) totalHeight = Math.max(1, items.length) * 4;
+
+    const orderNumber = `CC-${Math.floor(100000 + Math.random() * 900000)}`;
+    const notes = Number(subtotal) > 100
+      ? `HIGH-VALUE PROTECTION ($${protection_fee}): Insure parcel for $${subtotal} on Pirate Ship.`
+      : "Standard shipment (under $100).";
+
+    const { data: order, error } = await supabase
+      .from("orders")
+      .insert({
+        order_number: orderNumber,
+        customer_name,
+        customer_email,
+        shipping_address,
+        items,
+        subtotal: Number(subtotal),
+        shipping_cost: Number(shipping_cost),
+        protection_fee: Number(protection_fee),
+        total: Number(total),
+        payment_status: "paid",
+        fulfillment_status: "unfulfilled",
+        carrier: shipping_carrier,
+        shipping_carrier,
+        shipping_service,
+        weight_oz: totalWeightOz,
+        length_in: maxLength,
+        width_in: maxWidth,
+        height_in: totalHeight,
+        notes,
+      })
+      .select("id, order_number")
+      .single();
+
+    if (error) {
+      console.error("Supabase order insert error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, order });
+  } catch (err: any) {
+    console.error("Order API error:", err);
+    return NextResponse.json({ error: err?.message || "Failed to place order." }, { status: 500 });
+  }
+}
