@@ -4,6 +4,7 @@ export type Stock = 'In Stock' | 'Low Stock' | 'Sold Out'
 
 export type InventoryRow = {
   id: string
+  sku?: string | null
   title: string
   description: string
   price: number

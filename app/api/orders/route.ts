@@ -36,13 +36,15 @@ export async function POST(req: Request) {
     let totalHeight = 0;
 
     const ids = items.map((i: any) => i.id).filter((id: string) => id && !id.startsWith("local-"));
+    const productSkus = new Map<string, string | null>();
     if (ids.length > 0) {
       const { data: products } = await supabase
         .from("products")
-        .select("id, stock, weight_oz, length_in, width_in, height_in")
+        .select("id, sku, stock, weight_oz, length_in, width_in, height_in")
         .in("id", ids);
 
       if (products && products.length > 0) {
+        for (const product of products) productSkus.set(String(product.id), product.sku ?? null);
         for (const item of items) {
           const qty = Number(item.quantity || 1);
           const p = products.find((prod: any) => prod.id === item.id);
@@ -80,7 +82,7 @@ export async function POST(req: Request) {
         customer_name,
         customer_email,
         shipping_address,
-        items,
+        items: items.map((item: any) => ({ ...item, sku: productSkus.get(String(item.id)) ?? item.sku ?? null })),
         subtotal: Number(subtotal),
         shipping_cost: Number(shipping_cost),
         protection_fee: Number(protection_fee),

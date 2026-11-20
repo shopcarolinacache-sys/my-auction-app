@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       if (ids.length > 0) {
         const { data: products } = await supabase
           .from("products")
-          .select("id, weight_oz, length_in, width_in, height_in")
+          .select("id, sku, weight_oz, length_in, width_in, height_in")
           .in("id", ids);
 
         if (products && products.length > 0) {

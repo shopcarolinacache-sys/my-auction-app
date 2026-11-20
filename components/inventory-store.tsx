@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
-import { ImagePlus, X } from 'lucide-react'
+import { ImagePlus, LockKeyhole, X } from 'lucide-react'
 import { products, type Category, type Product, type Stock } from '@/data/products'
 import { getBrowserSupabase } from '@/lib/supabase-browser'
 
@@ -10,6 +10,7 @@ export const SHIPPING_PRESETS = [{ id: 'flat', label: 'Flat Mailer (8 oz - 11x9x
 export type InventoryItem = Product & { quantity: number; listingStatus: ListingStatus; createdAt: string }
 
 type NewInventoryItem = {
+  sku: string
   title: string
   description: string
   price: number
@@ -17,12 +18,18 @@ type NewInventoryItem = {
   quantity: number
   listingStatus: ListingStatus
   image: string
+  weight_oz?: number
+  length_in?: number
+  width_in?: number
+  height_in?: number
+  shipping_tier?: string
 }
+type InventoryUpdates = Partial<Omit<NewInventoryItem, 'sku'>>
 type InventoryContextValue = {
   items: InventoryItem[]
   visibleItems: InventoryItem[]
-  createItem: (input: NewInventoryItem) => InventoryItem
-  updateItem: (id: string, updates: Partial<NewInventoryItem>) => void
+  createItem: (input: NewInventoryItem) => Promise<InventoryItem>
+  updateItem: (id: string, updates: InventoryUpdates) => void
   removeItem: (id: string) => void
   openEditor: (item?: InventoryItem, category?: Category) => void
   notify: (message: string) => void
@@ -36,11 +43,11 @@ function fromDatabase(row: any): InventoryItem {
   const quantity = Number(row.stock ?? 0)
   const listingStatus: ListingStatus = row.status === 'draft' ? 'Draft' : row.status === 'sold' || quantity <= 0 ? 'Sold' : 'Available'
   const stock = stockFor(quantity, listingStatus)
-  return { id: String(row.id), title: row.title ?? '', name: row.title ?? '', description: row.description ?? '', price: Number(row.price ?? 0), category, categoryLabel: categoryLabels[category], condition: row.condition ?? 'Excellent', stock, status: stock, quantity, listingStatus, image, image_url: image, createdAt: row.created_at ?? new Date().toISOString() }
+  return { id: String(row.id), sku: row.sku ?? null, title: row.title ?? '', name: row.title ?? '', description: row.description ?? '', price: Number(row.price ?? 0), category, categoryLabel: categoryLabels[category], condition: row.condition ?? 'Excellent', stock, status: stock, quantity, listingStatus, image, image_url: image, createdAt: row.created_at ?? new Date().toISOString() }
 }
 
-function toDatabase(item: InventoryItem | NewInventoryItem) {
-  return { title: item.title, description: item.description, price: item.price, category: item.category, condition: 'condition' in item ? item.condition : 'Excellent', stock: item.quantity, status: item.listingStatus === 'Draft' ? 'draft' : item.listingStatus === 'Sold' ? 'sold' : 'active', images: [item.image || '/products/trading-card.png'], section_placement: 'collection', weight_oz: (item as any).weight_oz ?? 16, length_in: (item as any).length_in ?? 10, width_in: (item as any).width_in ?? 8, height_in: (item as any).height_in ?? 4, shipping_tier: (item as any).shipping_tier ?? 'Standard Box (1 lb)' }
+function toDatabase(item: any, includeSku = false) {
+  return { ...(includeSku ? { sku: item.sku } : {}), title: item.title, description: item.description, price: item.price, category: item.category, condition: 'condition' in item ? item.condition : 'Excellent', stock: item.quantity, status: item.listingStatus === 'Draft' ? 'draft' : item.listingStatus === 'Sold' ? 'sold' : 'active', images: [item.image || '/products/trading-card.png'], section_placement: 'collection', weight_oz: item.weight_oz ?? 16, length_in: item.length_in ?? 10, width_in: item.width_in ?? 8, height_in: item.height_in ?? 4, shipping_tier: item.shipping_tier ?? 'Standard Box (1 lb)' }
 }
 
 const categoryLabels: Record<Category, string> = {
@@ -79,7 +86,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     if (!client) return
     let alive = true
     const load = async () => {
-      const { data, error } = await client.from('products').select('id,title,description,price,category,section_placement,condition,stock,status,images,created_at').order('created_at', { ascending: false })
+      const { data, error } = await client.from('products').select('id,sku,title,description,price,category,section_placement,condition,stock,status,images,created_at').order('created_at', { ascending: false })
       if (!alive || error || !data?.length) return
       setItems(data.map(fromDatabase))
     }
@@ -96,36 +103,31 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   const notify = useCallback((message: string) => setToast(message), [])
   const visibleItems = useMemo(() => items.filter((item) => item.listingStatus !== 'Draft'), [items])
 
-  const createItem = useCallback((input: NewInventoryItem) => {
+  const createItem = useCallback(async (input: NewInventoryItem) => {
+    const client = getBrowserSupabase()
+    if (client) {
+      const { data, error } = await client.from('products').insert(toDatabase(input, true)).select('id,sku,title,description,price,category,section_placement,condition,stock,status,images,created_at').single()
+      if (error) throw error
+      if (!data) throw new Error('The product was not returned after saving.')
+      const saved = fromDatabase(data)
+      setItems((current) => [saved, ...current.filter((entry) => entry.id !== saved.id)])
+      notify(`${saved.title} saved to Supabase.`)
+      return saved
+    }
     const item: InventoryItem = {
-      id: `local-${crypto.randomUUID()}`,
-      title: input.title,
-      name: input.title,
-      description: input.description,
-      price: input.price,
-      category: input.category,
-      categoryLabel: categoryLabels[input.category],
-      condition: 'Excellent',
-      stock: stockFor(input.quantity, input.listingStatus),
-      status: stockFor(input.quantity, input.listingStatus),
-      quantity: input.quantity,
-      listingStatus: input.listingStatus,
-      image: input.image || '/products/trading-card.png',
-      image_url: input.image || '/products/trading-card.png',
-      createdAt: new Date().toISOString(),
+      id: `local-${crypto.randomUUID()}`, sku: input.sku, title: input.title, name: input.title,
+      description: input.description, price: input.price, category: input.category,
+      categoryLabel: categoryLabels[input.category], condition: 'Excellent',
+      stock: stockFor(input.quantity, input.listingStatus), status: stockFor(input.quantity, input.listingStatus),
+      quantity: input.quantity, listingStatus: input.listingStatus, image: input.image || '/products/trading-card.png',
+      image_url: input.image || '/products/trading-card.png', createdAt: new Date().toISOString(),
     }
     setItems((current) => [item, ...current])
-    const client = getBrowserSupabase()
-    if (client) void client.from('products').insert(toDatabase(item)).select('id,title,description,price,category,section_placement,condition,stock,status,images,created_at').single().then(({ data, error }) => {
-      if (error) { notify(`Could not save ${item.title}: ${error.message}`); return }
-      if (data) setItems((current) => current.map((entry) => entry.id === item.id ? fromDatabase(data) : entry))
-      notify(`${item.title} saved to Supabase.`)
-    })
-    else notify(`${item.title} added to this session.`)
+    notify(`${item.title} added to this session.`)
     return item
   }, [notify])
 
-  const updateItem = useCallback((id: string, updates: Partial<NewInventoryItem>) => {
+  const updateItem = useCallback((id: string, updates: InventoryUpdates) => {
     setItems((current) => current.map((item) => {
       if (item.id !== id) return item
       const next = { ...item, ...updates }
@@ -170,7 +172,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     if (!toImport.length) return 0
     const { error } = await client.from('products').insert(toImport)
     if (error) throw error
-    const { data } = await client.from('products').select('id,title,description,price,category,section_placement,condition,stock,status,images,created_at').order('created_at', { ascending: false })
+    const { data } = await client.from('products').select('id,sku,title,description,price,category,section_placement,condition,stock,status,images,created_at').order('created_at', { ascending: false })
     if (data?.length) setItems(data.map(fromDatabase))
     return toImport.length
   }, [])
@@ -189,9 +191,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       defaultCategory={editorDefaultCategory}
       notify={notify}
       onClose={closeEditor}
-      onSave={(input) => {
-        if (editorItemId) updateItem(editorItemId, input)
-        else createItem(input)
+      onSave={async (input) => {
+        if (editorItemId) {
+          const { sku: _lockedSku, ...updates } = input
+          updateItem(editorItemId, updates)
+        } else {
+          await createItem(input)
+        }
         closeEditor()
       }}
     />}
@@ -203,8 +209,9 @@ function InventoryEditorDialog({ item, defaultCategory, notify, onClose, onSave 
   defaultCategory: Category
   notify: (message: string) => void
   onClose: () => void
-  onSave: (input: NewInventoryItem) => void
+  onSave: (input: NewInventoryItem) => Promise<void>
 }) {
+  const [sku, setSku] = useState(item?.sku ?? '')
   const [title, setTitle] = useState(item?.title ?? '')
   const [description, setDescription] = useState(item?.description ?? '')
   const [price, setPrice] = useState(item ? String(item.price) : '')
@@ -236,21 +243,33 @@ function InventoryEditorDialog({ item, defaultCategory, notify, onClose, onSave 
     notify('Image uploaded to product-images.')
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const normalizedSku = sku.trim().toUpperCase()
     const parsedPrice = Number(price)
     const parsedQuantity = Number(quantity)
-    if (!title.trim() || !Number.isFinite(parsedPrice) || parsedPrice < 0 || !Number.isInteger(parsedQuantity) || parsedQuantity < 0) {
-      setError('Enter an item title, a valid price, and a whole-number quantity of zero or more.')
+    if ((!item && !normalizedSku) || !title.trim() || !Number.isFinite(parsedPrice) || parsedPrice < 0 || !Number.isInteger(parsedQuantity) || parsedQuantity < 0) {
+      setError(!item && !normalizedSku ? 'Enter a SKU for this item.' : 'Enter an item title, a valid price, and a whole-number quantity of zero or more.')
       return
     }
-    const pr = SHIPPING_PRESETS.find((p) => p.id === presetId) ?? SHIPPING_PRESETS[1]; onSave({ title: title.trim(), description: description.trim(), price: Math.round(parsedPrice * 100) / 100, category, quantity: parsedQuantity, listingStatus, image, weight_oz: pr.w, length_in: pr.l, width_in: pr.wd, height_in: pr.h, shipping_tier: pr.tier } as any)
+    const pr = SHIPPING_PRESETS.find((p) => p.id === presetId) ?? SHIPPING_PRESETS[1]
+    setBusy(true)
+    setError('')
+    try {
+      await onSave({ sku: normalizedSku, title: title.trim(), description: description.trim(), price: Math.round(parsedPrice * 100) / 100, category, quantity: parsedQuantity, listingStatus, image, weight_oz: pr.w, length_in: pr.l, width_in: pr.wd, height_in: pr.h, shipping_tier: pr.tier })
+    } catch (saveError) {
+      const code = (saveError as { code?: string })?.code
+      setError(code === '23505' ? 'That SKU already exists. Enter a unique SKU.' : 'Could not save this item. Please try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return <div className="fixed inset-0 z-[120] flex items-center justify-center bg-neutral-950/60 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <section role="dialog" aria-modal="true" aria-labelledby="inventory-editor-title" className="max-h-[92vh] w-full max-w-2xl overflow-y-auto border border-neutral-200 bg-[#f7f7f4] p-5 text-neutral-950 shadow-2xl sm:p-7">
       <div className="flex items-start justify-between border-b border-neutral-200 pb-5"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Carolina Cache · Inventory</p><h2 id="inventory-editor-title" className="mt-2 text-2xl font-black tracking-tight">{item ? 'Edit item' : 'Add a find'}</h2><p className="mt-1 text-xs text-neutral-500">Edits update the current storefront session only.</p></div><button type="button" onClick={onClose} aria-label="Close item editor" className="grid size-9 place-items-center border border-neutral-200 bg-white"><X className="size-4" /></button></div>
       <form onSubmit={submit} className="mt-6 grid gap-5 sm:grid-cols-2">
+        {!item ? <label><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-neutral-600">SKU</span><input required value={sku} onChange={(event) => setSku(event.target.value.trim().toUpperCase())} placeholder="CLT-SHOE-001" autoCapitalize="characters" className="w-full border border-neutral-300 bg-white px-3 py-3 font-mono text-sm uppercase outline-none focus:border-emerald-700" /><span className="mt-1 block text-[11px] text-neutral-500">Format: LOCATION-TYPE-NUMBER (locked once saved).</span></label> : <div><span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-600">SKU <LockKeyhole className="size-3" aria-hidden="true" /></span><input readOnly value={item.sku ?? ''} aria-label="SKU, locked after creation" className="w-full cursor-not-allowed border border-neutral-200 bg-neutral-100 px-3 py-3 font-mono text-sm text-neutral-600" /><span className="mt-1 block text-[11px] text-neutral-500">SKU is locked after creation.</span></div>}
         <label className="sm:col-span-2"><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-neutral-600">Title</span><input required value={title} onChange={(event) => setTitle(event.target.value)} className="w-full border border-neutral-300 bg-white px-3 py-3 text-sm outline-none focus:border-emerald-700" /></label>
         <label className="sm:col-span-2"><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-neutral-600">Description</span><textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} className="w-full resize-y border border-neutral-300 bg-white px-3 py-3 text-sm outline-none focus:border-emerald-700" /></label>
         <label><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-neutral-600">Price</span><input type="number" required min="0" step="0.01" value={price} onChange={(event) => setPrice(event.target.value)} className="w-full border border-neutral-300 bg-white px-3 py-3 text-sm outline-none focus:border-emerald-700" /></label>

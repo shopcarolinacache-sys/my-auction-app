@@ -122,6 +122,7 @@ export default function CheckoutPage() {
           items: lines.map(({ product, quantity }) => ({
             id: product.id,
             name: product.name || product.title,
+            sku: product.sku ?? null,
             price: product.price,
             quantity,
           })),

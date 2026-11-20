@@ -19,6 +19,7 @@ const stockStyles = { 'In Stock': 'bg-emerald-700', 'Low Stock': 'bg-amber-500',
 export function ProductCard({ product }: { product: Product }) {
   const [added, setAdded] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
   const soldOut = product.stock === 'Sold Out'
   const { add } = useCart()
   const { authenticated } = useAdminAuth()
@@ -33,6 +34,7 @@ export function ProductCard({ product }: { product: Product }) {
     window.setTimeout(() => { setLoading(false); setAdded(false) }, 1200)
   }
   return (
+    <>
     <article className="group flex flex-col overflow-hidden border border-neutral-200 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-neutral-900 hover:shadow-xl">
       <div className="group relative aspect-square overflow-hidden bg-neutral-100">
         <img src={product.image} alt={`${product.name} — ${product.categoryLabel}, ${product.condition} condition`} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = '/products/trading-card.png' }} className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -44,6 +46,7 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="flex flex-1 flex-col p-4 sm:p-5">
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">{product.categoryLabel}</p>
         <h3 className="min-h-10 text-base font-semibold leading-snug text-neutral-900"><Link href={`/category/${product.category}`} className="hover:text-emerald-800">{product.name}</Link></h3>
+        <button type="button" onClick={() => setShowDetails(true)} className="mt-2 self-start text-[10px] font-bold uppercase tracking-wider text-neutral-500 underline underline-offset-4 hover:text-emerald-800">View details</button>
         <div className="mt-5 flex items-center justify-between gap-3">
           <div>
             <p className="text-xl font-bold tracking-tight text-neutral-950">${product.price.toLocaleString()}</p>
@@ -55,5 +58,7 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
       </div>
     </article>
+    {showDetails && <div className="fixed inset-0 z-[130] grid place-items-center bg-neutral-950/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowDetails(false) }}><section role="dialog" aria-modal="true" aria-labelledby={`product-detail-${product.id}`} className="w-full max-w-lg border border-neutral-200 bg-[#f7f7f4] p-6 text-neutral-950 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">{product.categoryLabel}</p><h2 id={`product-detail-${product.id}`} className="mt-2 text-2xl font-black tracking-tight">{product.name}</h2></div><button type="button" onClick={() => setShowDetails(false)} aria-label="Close product details" className="border border-neutral-300 bg-white px-3 py-2 text-sm">Close</button></div><p className="mt-4 text-sm leading-relaxed text-neutral-600">{product.description}</p>{product.sku && <p className="mt-5 border-t border-neutral-200 pt-3 font-mono text-xs text-neutral-500">SKU: {product.sku}</p>}</section></div>}
+    </>
   )
 }
