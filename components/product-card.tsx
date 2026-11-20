@@ -13,6 +13,10 @@ const conditionStyles = {
   Mint: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   Excellent: 'bg-blue-50 text-blue-700 border-blue-200',
   Refurbished: 'bg-blue-50 text-blue-700 border-blue-200',
+  'New in Box': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'Used - Like New': 'bg-blue-50 text-blue-700 border-blue-200',
+  'Used - Very Good': 'bg-blue-50 text-blue-700 border-blue-200',
+  'PSA 8 NM-MT': 'bg-emerald-50 text-emerald-700 border-emerald-200',
 }
 const stockStyles = { 'In Stock': 'bg-emerald-700', 'Low Stock': 'bg-amber-500', 'Sold Out': 'bg-neutral-400' }
 

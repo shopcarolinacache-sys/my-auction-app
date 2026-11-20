@@ -31,24 +31,25 @@ type InventoryContextValue = {
 
 function fromDatabase(row: any): InventoryItem {
   const rawCategory = String(row.category ?? '').toLowerCase()
-  const category: Category = rawCategory.includes('card') ? 'cards' : rawCategory.includes('toy') ? 'toys' : rawCategory.includes('electronic') ? 'electronics' : 'collectibles'
+  const category: Category = rawCategory.includes('card') ? 'cards' : rawCategory.includes('figure') || rawCategory.includes('toy') ? 'toys' : rawCategory.includes('electronic') ? 'electronics' : 'collectibles'
   const images = normalizeProductImages(row.images)
   const image = images[0] ?? '/products/trading-card.png'
   const quantity = Number(row.stock ?? 0)
-  const listingStatus: ListingStatus = row.status === 'draft' ? 'Draft' : row.status === 'sold' || quantity <= 0 ? 'Sold' : 'Available'
+  const rawStatus = String(row.status ?? '').toLowerCase()
+  const listingStatus: ListingStatus = rawStatus === 'draft' ? 'Draft' : rawStatus === 'sold' || rawStatus === 'unavailable' || quantity <= 0 ? 'Sold' : 'Available'
   const stock = stockFor(quantity, listingStatus)
-  return { id: String(row.id), title: row.title ?? '', name: row.title ?? '', description: row.description ?? '', price: Number(row.price ?? 0), category, categoryLabel: categoryLabels[category], condition: row.condition ?? 'Excellent', stock, status: stock, quantity, listingStatus, image, image_url: image, images, createdAt: row.created_at ?? new Date().toISOString() }
+  return { id: String(row.id), sku: row.sku ?? undefined, title: row.title ?? '', name: row.title ?? '', description: row.description ?? '', price: Number(row.price ?? 0), category, categoryLabel: categoryLabels[category], condition: row.condition ?? 'Excellent', stock, status: stock, quantity, listingStatus, image, image_url: image, images, weight_oz: row.weight_oz, length_in: row.length_in, width_in: row.width_in, height_in: row.height_in, shipping_tier: row.shipping_tier, createdAt: row.created_at ?? new Date().toISOString() }
 }
 
 function toDatabase(item: InventoryItem | NewInventoryItem) {
-  return { title: item.title, description: item.description, price: item.price, category: item.category, condition: 'condition' in item ? item.condition : 'Excellent', stock: item.quantity, status: item.listingStatus === 'Draft' ? 'draft' : item.listingStatus === 'Sold' ? 'sold' : 'active', images: [item.image || '/products/trading-card.png'], section_placement: 'collection', weight_oz: (item as any).weight_oz ?? 16, length_in: (item as any).length_in ?? 10, width_in: (item as any).width_in ?? 8, height_in: (item as any).height_in ?? 4, shipping_tier: (item as any).shipping_tier ?? 'Standard Box (1 lb)' }
+  return { sku: (item as any).sku, title: item.title, description: item.description, price: item.price, category: item.category, condition: 'condition' in item ? item.condition : 'Excellent', stock: item.quantity, status: item.listingStatus === 'Draft' ? 'draft' : item.listingStatus === 'Sold' ? 'sold' : 'available', images: (item as any).images?.length ? (item as any).images : [item.image || '/products/trading-card.png'], section_placement: 'Shop', weight_oz: (item as any).weight_oz ?? 16, length_in: (item as any).length_in ?? 10, width_in: (item as any).width_in ?? 8, height_in: (item as any).height_in ?? 4, shipping_tier: (item as any).shipping_tier ?? 'Standard Box (1 lb)' }
 }
 
 const categoryLabels: Record<Category, string> = {
-  cards: 'Rare Trading Cards',
-  toys: 'Vintage Toys & Objects',
-  electronics: 'Rare Electronics',
-  collectibles: 'Collectibles & Curiosities',
+  cards: 'Trading Cards',
+  toys: 'Action Figures',
+  electronics: 'Electronics',
+  collectibles: 'Collectibles',
 }
 const categories: Array<{ value: Category; label: string }> = [
   { value: 'cards', label: 'Trading cards' },
@@ -59,7 +60,7 @@ const categories: Array<{ value: Category; label: string }> = [
 const stockFor = (quantity: number, status: ListingStatus): Stock => status === 'Sold' || quantity <= 0 ? 'Sold Out' : quantity <= 2 ? 'Low Stock' : 'In Stock'
 const initialItems: InventoryItem[] = products.map((product, index) => ({
   ...product,
-  quantity: product.stock === 'Sold Out' ? 0 : product.stock === 'Low Stock' ? 2 : 8,
+quantity: product.stock === 'Sold Out' ? 0 : product.sku ? 1 : product.stock === 'Low Stock' ? 2 : 8,
   listingStatus: product.stock === 'Sold Out' ? 'Sold' : 'Available',
   createdAt: new Date(Date.now() - index * 86400000).toISOString(),
 }))
@@ -80,14 +81,19 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     if (!client) return
     let alive = true
     const load = async () => {
-      const { data, error } = await client.from('products').select('id,title,description,price,category,section_placement,condition,stock,status,images,created_at').order('created_at', { ascending: false })
+      const { data, error } = await client.from('products').select('id,sku,title,description,price,category,section_placement,condition,stock,status,images,weight_oz,length_in,width_in,height_in,shipping_tier,created_at').order('created_at', { ascending: false })
       if (!alive || error || !data?.length) return
-      setItems(data.map(fromDatabase))
+      const liveItems = data.map(fromDatabase)
+      setItems((current) => {
+        const liveKeys = new Set(liveItems.flatMap((item) => item.sku ? [`sku:${item.sku.trim().toUpperCase()}`] : [`id:${item.id}`]))
+        const fallback = current.filter((item) => !liveKeys.has(item.sku ? `sku:${item.sku.trim().toUpperCase()}` : `id:${item.id}`))
+        return [...liveItems, ...fallback]
+      })
     }
     void load()
     const channel = client.channel('storefront-products-live').on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
       if (payload.eventType === 'DELETE') setItems((current) => current.filter((item) => item.id !== String((payload.old as any).id)))
-      else if (payload.new) setItems((current) => { const next = fromDatabase(payload.new); return [next, ...current.filter((item) => item.id !== next.id)] })
+      else if (payload.new) setItems((current) => { const next = fromDatabase(payload.new); const key = next.sku ? `sku:${next.sku.trim().toUpperCase()}` : `id:${next.id}`; return [next, ...current.filter((item) => (item.sku ? `sku:${item.sku.trim().toUpperCase()}` : `id:${item.id}`) !== key)] })
     }).subscribe()
     return () => { alive = false; void client.removeChannel(channel) }
   }, [])
@@ -118,7 +124,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }
     setItems((current) => [item, ...current])
     const client = getBrowserSupabase()
-    if (client) void client.from('products').insert(toDatabase(item)).select('id,title,description,price,category,section_placement,condition,stock,status,images,created_at').single().then(({ data, error }) => {
+    if (client) void client.from('products').insert(toDatabase(item)).select('id,sku,title,description,price,category,section_placement,condition,stock,status,images,weight_oz,length_in,width_in,height_in,shipping_tier,created_at').single().then(({ data, error }) => {
       if (error) { notify(`Could not save ${item.title}: ${error.message}`); return }
       if (data) setItems((current) => current.map((entry) => entry.id === item.id ? fromDatabase(data) : entry))
       notify(`${item.title} saved to Supabase.`)
@@ -172,7 +178,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     if (!toImport.length) return 0
     const { error } = await client.from('products').insert(toImport)
     if (error) throw error
-    const { data } = await client.from('products').select('id,title,description,price,category,section_placement,condition,stock,status,images,created_at').order('created_at', { ascending: false })
+    const { data } = await client.from('products').select('id,sku,title,description,price,category,section_placement,condition,stock,status,images,weight_oz,length_in,width_in,height_in,shipping_tier,created_at').order('created_at', { ascending: false })
     if (data?.length) setItems(data.map(fromDatabase))
     return toImport.length
   }, [])
