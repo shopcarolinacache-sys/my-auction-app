@@ -8,6 +8,7 @@ export type InventoryRow = {
   description: string
   price: number
   image_url?: string | null
+  images?: string[]
   category: Category
   created_at?: string
   status?: Stock
@@ -33,7 +34,16 @@ const fallbackImages = {
   stamps: 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?auto=format&fit=crop&w=1200&q=90',
 }
 
-const imageFor = (imageUrl: string | null | undefined, fallbackUrl: string) => imageUrl || fallbackUrl
+export function normalizeProductImages(value: unknown): string[] {
+  const candidates = Array.isArray(value) ? value : typeof value === 'string' ? [value] : []
+  return candidates.flatMap((candidate) => {
+    if (typeof candidate !== 'string') return []
+    const url = candidate.trim()
+    return url ? [url] : []
+  })
+}
+
+const imageFor = (imageUrl: string | null | undefined, fallbackUrl: string) => imageUrl?.trim() || fallbackUrl
 
 const rawProducts: Array<Omit<Product, 'image'> & { image_url?: string | null; fallbackUrl: string }> = [
   { id: '01', title: 'Carolina Rookie Card Lot', name: 'Carolina Rookie Card Lot', description: 'A hand-selected run of graded modern classics.', category: 'cards', categoryLabel: 'Rare Trading Cards', condition: 'Near Mint', stock: 'Low Stock', status: 'Low Stock', collectorNote: 'Graded lot', price: 4850, image_url: null, fallbackUrl: fallbackImages.rookieLot },

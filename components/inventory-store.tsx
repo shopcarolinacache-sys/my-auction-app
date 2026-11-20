@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { ImagePlus, X } from 'lucide-react'
-import { products, type Category, type Product, type Stock } from '@/data/products'
+import { normalizeProductImages, products, type Category, type Product, type Stock } from '@/data/products'
 import { getBrowserSupabase } from '@/lib/supabase-browser'
 
 export type ListingStatus = 'Available' | 'Sold' | 'Draft'
@@ -32,11 +32,12 @@ type InventoryContextValue = {
 function fromDatabase(row: any): InventoryItem {
   const rawCategory = String(row.category ?? '').toLowerCase()
   const category: Category = rawCategory.includes('card') ? 'cards' : rawCategory.includes('toy') ? 'toys' : rawCategory.includes('electronic') ? 'electronics' : 'collectibles'
-  const image = Array.isArray(row.images) ? String(row.images[0] ?? '/products/trading-card.png') : typeof row.images === 'string' ? row.images : '/products/trading-card.png'
+  const images = normalizeProductImages(row.images)
+  const image = images[0] ?? '/products/trading-card.png'
   const quantity = Number(row.stock ?? 0)
   const listingStatus: ListingStatus = row.status === 'draft' ? 'Draft' : row.status === 'sold' || quantity <= 0 ? 'Sold' : 'Available'
   const stock = stockFor(quantity, listingStatus)
-  return { id: String(row.id), title: row.title ?? '', name: row.title ?? '', description: row.description ?? '', price: Number(row.price ?? 0), category, categoryLabel: categoryLabels[category], condition: row.condition ?? 'Excellent', stock, status: stock, quantity, listingStatus, image, image_url: image, createdAt: row.created_at ?? new Date().toISOString() }
+  return { id: String(row.id), title: row.title ?? '', name: row.title ?? '', description: row.description ?? '', price: Number(row.price ?? 0), category, categoryLabel: categoryLabels[category], condition: row.condition ?? 'Excellent', stock, status: stock, quantity, listingStatus, image, image_url: image, images, createdAt: row.created_at ?? new Date().toISOString() }
 }
 
 function toDatabase(item: InventoryItem | NewInventoryItem) {
@@ -110,8 +111,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       status: stockFor(input.quantity, input.listingStatus),
       quantity: input.quantity,
       listingStatus: input.listingStatus,
-      image: input.image || '/products/trading-card.png',
-      image_url: input.image || '/products/trading-card.png',
+      image: input.image?.trim() || '/products/trading-card.png',
+      image_url: input.image?.trim() || '/products/trading-card.png',
+      images: input.image?.trim() ? [input.image.trim()] : [],
       createdAt: new Date().toISOString(),
     }
     setItems((current) => [item, ...current])
