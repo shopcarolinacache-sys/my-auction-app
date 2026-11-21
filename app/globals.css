@@ -153,6 +153,43 @@
   }
 }
 
+@keyframes replay-card-cam {
+  0%, 100% { transform: scale(1.04) translate3d(-1%, 1%, 0) rotate(-0.5deg); }
+  50% { transform: scale(1.12) translate3d(1.5%, -1%, 0) rotate(0.4deg); }
+}
+
+@keyframes replay-shelf-cam {
+  0% { transform: scale(1.08) translate3d(3%, 0, 0); }
+  100% { transform: scale(1.1) translate3d(-3%, 0, 0); }
+}
+
+@keyframes replay-headphone-cam {
+  0%, 100% { transform: scale(1.06) translate3d(1%, 1%, 0); }
+  50% { transform: scale(1.14) translate3d(-1%, -1%, 0); }
+}
+
+@keyframes replay-chat-rise {
+  0%, 100% { opacity: 0.45; transform: translateY(5px); }
+  20%, 80% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes replay-winner-flash {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.04); filter: brightness(1.2); }
+}
+
+.replay-camera { animation: replay-card-cam 8s ease-in-out infinite; }
+.replay-stage[data-demo-type='vintage-shelf'] .replay-camera { animation: replay-shelf-cam 12s ease-in-out infinite alternate; }
+.replay-stage[data-demo-type='headphones-dark'] .replay-camera { animation: replay-headphone-cam 6s ease-in-out infinite; }
+.replay-stage[data-playing='false'] .replay-camera,
+.replay-stage[data-playing='false'] .replay-chat p { animation-play-state: paused; }
+.replay-chat p { animation: replay-chat-rise 4.5s ease-in-out infinite; }
+.replay-winner { animation: replay-winner-flash 0.7s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .replay-camera, .replay-chat p, .replay-winner { animation: none !important; }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

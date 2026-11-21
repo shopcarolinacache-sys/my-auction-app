@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowUpRight, Search, UserRound, ShieldCheck, LogOut, PencilLine } from 'lucide-react'
 import { useAdminAuth } from '@/components/admin-auth'
 import { categoryCards, marketingHooks } from '@/data/storefront'
+import { getCategoryFallbackImage } from '@/data/products'
 import { CartButton } from '@/components/cart-drawer'
 
 type StorefrontSearchContextValue = { searchQuery: string; setSearchQuery: (value: string) => void }
@@ -86,26 +87,49 @@ export function MarketingHooks() {
 }
 
 export function CategoryShowcase() {
-  return <section id="categories" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10 lg:py-28"><div className="mb-10 flex items-end justify-between gap-6"><div><p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">Browse the edit</p><h2 className="mt-3 text-4xl font-black tracking-[-0.07em] sm:text-6xl">Find your next favorite.</h2></div><a href="#collection" className="hidden items-center gap-2 text-[10px] font-bold uppercase tracking-widest sm:flex">View all <ArrowUpRight className="size-4" /></a></div><div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">{categoryCards.map((category, index) => <Link key={category.id} href={`/category/${category.id}`} className={`group relative min-h-64 overflow-hidden bg-neutral-900 ${index === 0 ? 'col-span-2 row-span-2 min-h-[32rem]' : index === 4 ? 'col-span-2 lg:col-span-1' : ''}`}><img src={category.image} alt={`${category.title} collection at Carolina Cache`} className="absolute inset-0 size-full object-cover opacity-80 transition-transform duration-500 ease-out group-hover:scale-105 group-hover:opacity-100" /><div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" /><div className="absolute inset-x-5 bottom-5 text-white"><p className="text-[9px] font-bold uppercase tracking-[0.2em] text-emerald-300">{category.eyebrow}</p><h3 className="mt-2 text-xl font-black tracking-[-0.04em]">{category.title}</h3></div></Link>)}</div></section>
+  return <section id="categories" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10 lg:py-28"><div className="mb-10 flex items-end justify-between gap-6"><div><p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">Browse the edit</p><h2 className="mt-3 text-4xl font-black tracking-[-0.07em] sm:text-6xl">Find your next favorite.</h2></div><a href="#collection" className="hidden items-center gap-2 text-[10px] font-bold uppercase tracking-widest sm:flex">View all <ArrowUpRight className="size-4" /></a></div><div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">{categoryCards.map((category, index) => <Link key={category.id} href={`/category/${category.id}`} className={`group relative min-h-64 overflow-hidden bg-neutral-900 ${index === 0 ? 'col-span-2 row-span-2 min-h-[32rem]' : index === 4 ? 'col-span-2 lg:col-span-1' : ''}`}><img src={category.image || getCategoryFallbackImage(category.id)} alt={`${category.title} collection at Carolina Cache`} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = getCategoryFallbackImage(category.id) }} className="absolute inset-0 size-full object-cover opacity-80 transition-transform duration-500 ease-out group-hover:scale-105 group-hover:opacity-100" /><div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" /><div className="absolute inset-x-5 bottom-5 text-white"><p className="text-[9px] font-bold uppercase tracking-[0.2em] text-emerald-300">{category.eyebrow}</p><h3 className="mt-2 text-xl font-black tracking-[-0.04em]">{category.title}</h3></div></Link>)}</div></section>
 }
 
 export function RequestHub() {
   const [requestNotice, setRequestNotice] = useState('')
+  const [requestSending, setRequestSending] = useState(false)
+  const [requestError, setRequestError] = useState(false)
 
-  function submitRequest(event: FormEvent<HTMLFormElement>) {
+  async function submitRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (requestSending) return
+
     const form = event.currentTarget
     const formData = new FormData(form)
-    const subject = `Item sourcing request: ${String(formData.get('item-title') ?? '').trim()}`
-    const body = [
-      `Item: ${String(formData.get('item-title') ?? '').trim()}`,
-      `Maximum budget: $${String(formData.get('max-budget') ?? '').trim()}`,
-      `Email: ${String(formData.get('request-email') ?? '').trim()}`,
-      `Details: ${String(formData.get('request-details') ?? '').trim() || 'Not provided'}`,
-    ].join('\n')
-    window.location.href = `mailto:hello@carolinacache.com?${new URLSearchParams({ subject, body }).toString()}`
-    setRequestNotice('Your email app will open with the request details. Nothing is stored on this device.')
+    setRequestSending(true)
+    setRequestError(false)
+    setRequestNotice('Sending your request...')
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'source-request',
+          item: String(formData.get('item-title') ?? ''),
+          budget: String(formData.get('max-budget') ?? ''),
+          email: String(formData.get('request-email') ?? ''),
+          details: String(formData.get('request-details') ?? ''),
+          website: String(formData.get('website') ?? ''),
+        }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'We could not send your request.')
+      setRequestError(false)
+      setRequestNotice('Request sent. We’ll be in touch by email.')
+      form.reset()
+    } catch (error) {
+      setRequestError(true)
+      setRequestNotice(error instanceof Error ? error.message : 'We could not send your request. Please try again.')
+    } finally {
+      setRequestSending(false)
+    }
   }
 
-  return <section id="request" className="bg-neutral-950 px-5 py-20 text-white sm:px-8 lg:px-10 lg:py-28"><div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_0.8fr] lg:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-400">The request hub</p><h2 className="mt-4 max-w-2xl text-5xl font-black leading-[0.9] tracking-[-0.075em] sm:text-7xl">Can&apos;t find it? <span className="text-emerald-400">We source it.</span></h2><p className="mt-6 max-w-md text-sm leading-relaxed text-neutral-400">Tell us what belongs in your collection. Our network is always looking for the next exceptional object.</p></div><form className="grid gap-3" onSubmit={submitRequest}><label className="sr-only" htmlFor="item-title">Item title</label><input id="item-title" name="item-title" required placeholder="Item title" className="border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm outline-none transition focus:border-emerald-400" /><label className="sr-only" htmlFor="max-budget">Maximum budget</label><input id="max-budget" name="max-budget" required type="number" min="1" step="0.01" inputMode="decimal" placeholder="Maximum budget" className="border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm outline-none transition focus:border-emerald-400" /><label className="sr-only" htmlFor="request-email">Your email</label><input id="request-email" name="request-email" type="email" required placeholder="Your email address" className="border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm outline-none transition focus:border-emerald-400" /><label className="sr-only" htmlFor="request-details">Additional details</label><textarea id="request-details" name="request-details" rows={3} placeholder="Anything else we should know?" className="resize-y border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm outline-none transition focus:border-emerald-400" /><button className="bg-emerald-400 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-neutral-950 transition hover:bg-white" type="submit">Prepare request email <ArrowUpRight className="ml-2 inline size-4" /></button>{requestNotice && <p role="status" aria-live="polite" className="border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">{requestNotice}</p>}<p className="text-xs text-neutral-500">Your email app opens to send this request; requests are not saved online.</p></form></div></section>
+  return <section id="request" className="bg-neutral-950 px-5 py-20 text-white sm:px-8 lg:px-10 lg:py-28"><div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_0.8fr] lg:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-400">The request hub</p><h2 className="mt-4 max-w-2xl text-5xl font-black leading-[0.9] tracking-[-0.075em] sm:text-7xl">Can&apos;t find it? <span className="text-emerald-400">We source it.</span></h2><p className="mt-6 max-w-md text-sm leading-relaxed text-neutral-400">Tell us what belongs in your collection. Our network is always looking for the next exceptional object.</p></div><form className="grid gap-3" onSubmit={submitRequest}><label className="sr-only" htmlFor="item-title">Item title</label><input id="item-title" name="item-title" required placeholder="Item title" className="border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm outline-none transition focus:border-emerald-400" /><label className="sr-only" htmlFor="max-budget">Maximum budget</label><input id="max-budget" name="max-budget" required type="number" min="1" step="0.01" inputMode="decimal" placeholder="Maximum budget" className="border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm outline-none transition focus:border-emerald-400" /><label className="sr-only" htmlFor="request-email">Your email</label><input id="request-email" name="request-email" type="email" required placeholder="Your email address" className="border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm outline-none transition focus:border-emerald-400" /><label className="sr-only" htmlFor="request-details">Additional details</label><textarea id="request-details" name="request-details" rows={3} placeholder="Anything else we should know?" className="resize-y border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm outline-none transition focus:border-emerald-400" /><input aria-hidden="true" tabIndex={-1} autoComplete="off" name="website" className="sr-only" /><button disabled={requestSending} className="bg-emerald-400 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-neutral-950 transition hover:bg-white disabled:cursor-wait disabled:opacity-70" type="submit">{requestSending ? 'Sending request...' : 'Send request'} <ArrowUpRight className="ml-2 inline size-4" /></button>{requestNotice && <p role={requestError ? 'alert' : 'status'} aria-live="polite" className={`border px-4 py-3 text-sm ${requestError ? 'border-red-400/30 bg-red-400/10 text-red-200' : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'}`}>{requestNotice}</p>}<p className="text-xs text-neutral-500">Your request is sent securely to our team. We only use your email to reply.</p></form></div></section>
 }

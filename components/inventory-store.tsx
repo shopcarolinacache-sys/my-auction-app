@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { ImagePlus, X } from 'lucide-react'
-import { normalizeProductImages, products, type Category, type Product, type Stock } from '@/data/products'
+import { getCategoryFallbackImage, normalizeProductImages, products, type Category, type Product, type Stock } from '@/data/products'
 import { getBrowserSupabase } from '@/lib/supabase-browser'
 
 export type ListingStatus = 'Available' | 'Sold' | 'Draft'
@@ -33,7 +33,7 @@ function fromDatabase(row: any): InventoryItem {
   const rawCategory = String(row.category ?? '').toLowerCase()
   const category: Category = rawCategory.includes('card') ? 'cards' : rawCategory.includes('figure') || rawCategory.includes('toy') ? 'toys' : rawCategory.includes('electronic') ? 'electronics' : 'collectibles'
   const images = normalizeProductImages(row.images)
-  const image = images[0] ?? '/products/trading-card.png'
+  const image = images[0] ?? getCategoryFallbackImage(category)
   const quantity = Number(row.stock ?? 0)
   const rawStatus = String(row.status ?? '').toLowerCase()
   const listingStatus: ListingStatus = rawStatus === 'draft' ? 'Draft' : rawStatus === 'sold' || rawStatus === 'unavailable' || quantity <= 0 ? 'Sold' : 'Available'
@@ -42,7 +42,7 @@ function fromDatabase(row: any): InventoryItem {
 }
 
 function toDatabase(item: InventoryItem | NewInventoryItem) {
-  return { sku: (item as any).sku, title: item.title, description: item.description, price: item.price, category: item.category, condition: 'condition' in item ? item.condition : 'Excellent', stock: item.quantity, status: item.listingStatus === 'Draft' ? 'draft' : item.listingStatus === 'Sold' ? 'sold' : 'available', images: (item as any).images?.length ? (item as any).images : [item.image || '/products/trading-card.png'], section_placement: 'Shop', weight_oz: (item as any).weight_oz ?? 16, length_in: (item as any).length_in ?? 10, width_in: (item as any).width_in ?? 8, height_in: (item as any).height_in ?? 4, shipping_tier: (item as any).shipping_tier ?? 'Standard Box (1 lb)' }
+  return { sku: (item as any).sku, title: item.title, description: item.description, price: item.price, category: item.category, condition: 'condition' in item ? item.condition : 'Excellent', stock: item.quantity, status: item.listingStatus === 'Draft' ? 'draft' : item.listingStatus === 'Sold' ? 'sold' : 'available', images: (item as any).images?.length ? (item as any).images : [item.image || getCategoryFallbackImage(item.category)], section_placement: 'Shop', weight_oz: (item as any).weight_oz ?? 16, length_in: (item as any).length_in ?? 10, width_in: (item as any).width_in ?? 8, height_in: (item as any).height_in ?? 4, shipping_tier: (item as any).shipping_tier ?? 'Standard Box (1 lb)' }
 }
 
 const categoryLabels: Record<Category, string> = {
@@ -117,8 +117,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       status: stockFor(input.quantity, input.listingStatus),
       quantity: input.quantity,
       listingStatus: input.listingStatus,
-      image: input.image?.trim() || '/products/trading-card.png',
-      image_url: input.image?.trim() || '/products/trading-card.png',
+      image: input.image?.trim() || getCategoryFallbackImage(input.category),
+      image_url: input.image?.trim() || getCategoryFallbackImage(input.category),
       images: input.image?.trim() ? [input.image.trim()] : [],
       createdAt: new Date().toISOString(),
     }
