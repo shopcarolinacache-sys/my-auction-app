@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { publicContactEmail } from '@/lib/email-config'
 
 const footerLinkClass = 'text-sm text-zinc-400 transition hover:text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400'
 
@@ -21,7 +22,7 @@ export function StorefrontFooter() {
           <div className="mt-6 border-t border-zinc-800 pt-5">
             <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-200">Notes from the Cache</h3>
             <p className="mt-2 text-xs leading-relaxed text-zinc-500">New arrivals and early access, delivered occasionally.</p>
-            <a href="mailto:hello@carolinacache.com?subject=Newsletter%20signup" className="mt-3 inline-flex border-b border-emerald-500 pb-1 text-xs font-bold uppercase tracking-[0.12em] text-emerald-300 hover:text-white">Join the newsletter</a>
+            <a href={`mailto:${publicContactEmail}?subject=Newsletter%20signup`} className="mt-3 inline-flex border-b border-emerald-500 pb-1 text-xs font-bold uppercase tracking-[0.12em] text-emerald-300 hover:text-white">Join the newsletter</a>
           </div>
         </section>
         <nav aria-label="Quick links">
@@ -30,15 +31,15 @@ export function StorefrontFooter() {
             <li><Link className={footerLinkClass} href="/#collection">Shop all</Link></li>
             <li><Link className={footerLinkClass} href="/#live-auctions">Live auctions</Link></li>
             <li><Link className={footerLinkClass} href="/#request">Source an item</Link></li>
-            <li><a className={footerLinkClass} href="mailto:hello@carolinacache.com?subject=Rewards%20Club">Rewards club</a></li>
+            <li><a className={footerLinkClass} href={`mailto:${publicContactEmail}?subject=Rewards%20Club`}>Rewards club</a></li>
           </ul>
         </nav>
         <nav aria-label="Support">
           <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-200">Support</h2>
           <ul className="mt-5 flex flex-col gap-3">
-            <li><a className={footerLinkClass} href="mailto:hello@carolinacache.com">Contact</a></li>
+            <li><a className={footerLinkClass} href={`mailto:${publicContactEmail}`}>Contact</a></li>
             <li><Link className={footerLinkClass} href="/checkout">Insured shipping &amp; returns</Link></li>
-            <li><a className={footerLinkClass} href="mailto:hello@carolinacache.com?subject=Authentication%20guarantee">Authentication guarantee</a></li>
+            <li><a className={footerLinkClass} href={`mailto:${publicContactEmail}?subject=Authentication%20guarantee`}>Authentication guarantee</a></li>
           </ul>
         </nav>
         <nav aria-label="Legal and payment methods">

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { Bell, CircleDollarSign, Gavel, LayoutDashboard, LogOut, Save, Search, Settings, ShoppingBag, Users, Eye, Boxes } from 'lucide-react'
+import { publicContactEmail } from '@/lib/email-config'
 
 const inventory = [
   { id: 'CC-1048', title: '1986 Fleer Basketball Wax Pack', category: 'Trading Cards', price: '$1,250', status: 'Published', stock: 3 },
@@ -12,7 +13,7 @@ const inventory = [
 ]
 
 const nav = [{ label: 'Overview', icon: LayoutDashboard }, { label: 'Inventory', icon: Boxes }, { label: 'Orders', icon: ShoppingBag }, { label: 'Auctions', icon: Gavel }, { label: 'Customers', icon: Users }, { label: 'Site Content', icon: Settings }]
-const initialSettings = { hero_headline: 'Rare finds. Real stories.', hero_subtitle: 'A curated archive of collectibles, vintage objects, and electronic time capsules.', announcement_text: 'Insured promotional shipping applied at checkout · VIP rewards for returning collectors', about_text: 'Carolina Cache is a small, sharp-eyed archive for the objects that deserve a second look.', footer_contact: 'hello@carolinacache.com · Charlotte, North Carolina', footer_disclaimer: 'Every item is inspected and described with care. Availability and condition may vary.' }
+const initialSettings = { hero_headline: 'Rare finds. Real stories.', hero_subtitle: 'A curated archive of collectibles, vintage objects, and electronic time capsules.', announcement_text: 'Insured promotional shipping applied at checkout · VIP rewards for returning collectors', about_text: 'Carolina Cache is a small, sharp-eyed archive for the objects that deserve a second look.', footer_contact: `${publicContactEmail} · Charlotte, North Carolina`, footer_disclaimer: 'Every item is inspected and described with care. Availability and condition may vary.' }
 
 type SettingsState = typeof initialSettings
 

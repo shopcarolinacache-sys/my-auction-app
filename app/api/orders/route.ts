@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sendOrderNotifications } from "@/lib/email";
+import { isRateLimited, isValidEmail } from "@/lib/request-security";
 
 export async function POST(req: Request) {
+  if (isRateLimited(req, "order-submit", 5)) {
+    return NextResponse.json({ error: "Too many order attempts. Please try again shortly." }, { status: 429 });
+  }
+
   try {
     const body = await req.json();
     const {
@@ -17,8 +23,16 @@ export async function POST(req: Request) {
       shipping_service = "Insured",
     } = body;
 
-    if (!customer_name || !customer_email || !shipping_address?.zip) {
-      return NextResponse.json({ error: "Missing required customer or shipping fields." }, { status: 400 });
+    if (
+      typeof customer_name !== "string" || customer_name.trim().length < 2 || customer_name.length > 160 ||
+      !isValidEmail(customer_email) || typeof shipping_address?.zip !== "string" ||
+      shipping_address.zip.length !== 5 || !Array.isArray(items) || items.length < 1 || items.length > 50 ||
+      ![subtotal, shipping_cost, protection_fee, total].every((value) => Number.isFinite(Number(value)) && Number(value) >= 0) ||
+      items.some((item: any) => typeof item?.name !== "string" || item.name.length > 200 ||
+        !Number.isInteger(Number(item.quantity)) || Number(item.quantity) < 1 || Number(item.quantity) > 20 ||
+        !Number.isFinite(Number(item.price)) || Number(item.price) < 0)
+    ) {
+      return NextResponse.json({ error: "Check your customer, shipping, and order details." }, { status: 400 });
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/['"]/g, "").trim();
@@ -104,7 +118,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, order });
+    let notificationsSent = true;
+    try {
+      await sendOrderNotifications({
+        orderNumber: order.order_number,
+        customerName: customer_name.trim(),
+        customerEmail: customer_email.trim(),
+        items: items.map((item: any) => ({ name: item.name, quantity: Number(item.quantity), price: Number(item.price) })),
+        total: Number(total),
+      });
+    } catch {
+      notificationsSent = false;
+    }
+
+    return NextResponse.json({ success: true, order, notificationsSent });
   } catch (err: any) {
     console.error("Order API error:", err);
     return NextResponse.json({ error: err?.message || "Failed to place order." }, { status: 500 });

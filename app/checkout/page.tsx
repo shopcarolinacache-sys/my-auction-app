@@ -138,7 +138,7 @@ export default function CheckoutPage() {
       if (!res.ok) throw new Error(data.error || 'Could not place order.')
 
       lines.forEach(({ product }) => remove(product.id))
-      router.push(`/success?order=${encodeURIComponent(data.order?.order_number || '')}`)
+      router.push(`/success?order=${encodeURIComponent(data.order?.order_number || '')}&email=${data.notificationsSent ? 'sent' : 'unavailable'}`)
     } catch (err: any) {
       setSubmitError(err?.message || 'Failed to place order.')
       setSubmitting(false)
