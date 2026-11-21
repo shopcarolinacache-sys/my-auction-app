@@ -22,11 +22,20 @@ export const marketingHooks = [
   { number: '03', title: 'Rewards club', copy: 'Early access and considered perks for the collectors who return.' },
 ]
 
-export const mediaWins = [
-  { image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=800&q=85', label: 'SOLD for $250' },
-  { image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=85', label: 'Won by J***n' },
-  { image: 'https://images.unsplash.com/photo-1594784051410-6f2c7e1c2c31?auto=format&fit=crop&w=800&q=85', label: 'SOLD for $95' },
-  { image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=800&q=85', label: 'Won by T***r' },
+export type RecentWinCategory = 'The Vault' | 'The Shelf' | 'The Archive'
+
+export type RecentWin = {
+  id: string
+  title: string
+  category: RecentWinCategory
+  price: number
+  image: string
+}
+
+export const DEFAULT_RECENT_WINS: RecentWin[] = [
+  { id: 'vault-rookie-card', title: '1986 Rookie Card · PSA 9', category: 'The Vault', price: 250, image: '/images/recent-wins/card-win.png' },
+  { id: 'shelf-vintage-figure', title: '1980s Carded Space Ranger', category: 'The Shelf', price: 135, image: '/images/recent-wins/toy-win.png' },
+  { id: 'archive-walkman', title: 'Vintage Portable Cassette Player', category: 'The Archive', price: 195, image: '/images/recent-wins/electronics-win.png' },
 ]
 
 export const auctionVideos = [
