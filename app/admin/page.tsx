@@ -6,6 +6,7 @@ import Link from 'next/link';
 import InventoryManagement from './inventory';
 import AdminOrders from '@/components/admin-orders';
 import AdminOverview from '@/components/admin-overview';
+import { AdminReplays } from '@/components/admin-replays';
 import { 
   DollarSign, 
   ShoppingBag, 
@@ -17,7 +18,8 @@ import {
   Trash2, 
   Calendar,
   X,
-  CheckCircle2
+  CheckCircle2,
+  Film
 } from 'lucide-react';
 
 export interface AuctionItem {
@@ -226,6 +228,7 @@ export default function AdminWorkspacePage() {
             { label: 'Inventory', icon: ShoppingBag },
             { label: 'Orders', icon: ShoppingBag },
             { label: 'Auctions', icon: Gavel },
+            { label: 'Replays', icon: Film },
             { label: 'Customers', icon: Users },
           ].map(({ label, icon: Icon }) => (
             <button
@@ -249,7 +252,7 @@ export default function AdminWorkspacePage() {
 
       {/* Main Workspace */}
       <main className="min-w-0 flex-1 space-y-6 overflow-y-auto p-4 sm:space-y-8 sm:p-8">
-        {activeSection === 'Overview' ? <AdminOverview onNavigate={setActiveSection} /> : activeSection === 'Inventory' ? <InventoryManagement /> : activeSection === 'Orders' ? <AdminOrders /> : activeSection === 'Auctions' ? <>
+        {activeSection === 'Overview' ? <AdminOverview onNavigate={setActiveSection} /> : activeSection === 'Inventory' ? <InventoryManagement /> : activeSection === 'Orders' ? <AdminOrders /> : activeSection === 'Replays' ? <AdminReplays /> : activeSection === 'Auctions' ? <>
         {/* Top Header */}
         <div className="flex justify-between items-center">
           <div>

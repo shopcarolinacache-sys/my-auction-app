@@ -30,9 +30,9 @@ export const mediaWins = [
 ]
 
 export const auctionVideos = [
-  { title: 'The midnight card pull', image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=1000&q=85', duration: '08:42' },
-  { title: 'Vintage shelf tour', image: 'https://images.unsplash.com/photo-1594784051410-6f2c7e1c2c31?auto=format&fit=crop&w=1000&q=85', duration: '12:06' },
-  { title: 'Headphones after dark', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1000&q=85', duration: '06:18' },
+  { id: 'demo-midnight-pull', title: 'The midnight card pull', image: '/products/trading-card.png', duration: '08:42', demo_type: 'midnight-pull' as const, winner_username: '@CharlotteCollector', winning_bid: 285, video_url: null, thumbnail_url: null, is_active: true, sort_order: 0 },
+  { id: 'demo-vintage-shelf', title: 'Vintage shelf tour', image: '/products/action-figure.png', duration: '12:06', demo_type: 'vintage-shelf' as const, winner_username: '@RetroVaultNC', winning_bid: 148, video_url: null, thumbnail_url: null, is_active: true, sort_order: 1 },
+  { id: 'demo-headphones-dark', title: 'Headphones after dark', image: '/products/headphones.png', duration: '06:18', demo_type: 'headphones-dark' as const, winner_username: '@AudioHunter99', winning_bid: 220, video_url: null, thumbnail_url: null, is_active: true, sort_order: 2 },
 ]
 
 export function getCategory(id: string) {
