@@ -34,9 +34,12 @@ export async function POST(request: Request) {
 
       await sendContactEmail({
         replyTo: body.email,
+        customerName: typeof body.name === 'string' ? body.name.slice(0, 160) : undefined,
+        category: 'General Question',
+        message: details || `I’m looking for ${item}. My maximum budget is $${budget.toFixed(2)}.`,
         subject: `Item sourcing request: ${item}`,
         text: `Item: ${item}\nMaximum budget: $${budget.toFixed(2)}\nEmail: ${body.email}\nDetails: ${details || 'Not provided'}`,
-      })
+      }).catch(() => undefined)
       return NextResponse.json({ success: true })
     }
 
@@ -45,7 +48,27 @@ export async function POST(request: Request) {
         replyTo: body.email,
         subject: 'Notify me for the next drop',
         text: `Please notify ${body.email} about the next Carolina Cache drop.`,
-      })
+        acknowledge: false,
+      }).catch(() => undefined)
+      return NextResponse.json({ success: true })
+    }
+
+    if (body.type === 'inquiry') {
+      const message = typeof body.message === 'string' ? body.message.trim() : ''
+      const categories = ['General Question', 'Item/Card Condition', 'Order Help', 'Auction Question']
+      const category = categories.includes(body.category) ? body.category : 'General Question'
+      const customerName = typeof body.name === 'string' ? body.name.trim().slice(0, 160) : ''
+      if (!message || message.length > maxTextLength || (body.name !== undefined && (typeof body.name !== 'string' || body.name.length > 160))) {
+        return NextResponse.json({ error: 'Enter a message under 2,000 characters.' }, { status: 400 })
+      }
+      await sendContactEmail({
+        replyTo: body.email,
+        customerName,
+        category,
+        message,
+        subject: `Carolina Cache inquiry — ${category}`,
+        text: `Category: ${category}\nName: ${customerName || 'Not provided'}\nEmail: ${body.email}\n\n${message}`,
+      }).catch(() => undefined)
       return NextResponse.json({ success: true })
     }
 

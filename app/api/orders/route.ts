@@ -120,12 +120,15 @@ export async function POST(req: Request) {
 
     let notificationsSent = true;
     try {
-      await sendOrderNotifications({
+      notificationsSent = await sendOrderNotifications({
         orderNumber: order.order_number,
         customerName: customer_name.trim(),
         customerEmail: customer_email.trim(),
-        items: items.map((item: any) => ({ name: item.name, quantity: Number(item.quantity), price: Number(item.price) })),
+        items: items.map((item: any) => ({ name: item.name, sku: typeof item.sku === 'string' ? item.sku : typeof item.id === 'string' ? item.id : undefined, quantity: Number(item.quantity), price: Number(item.price) })),
+        subtotal: Number(subtotal),
+        shipping: Number(shipping_cost),
         total: Number(total),
+        shippingAddress: shipping_address,
       });
     } catch {
       notificationsSent = false;

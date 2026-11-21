@@ -35,6 +35,7 @@ export interface AuctionItem {
   images?: string[];
   minIncrement?: number;
   productId?: string | null;
+  winnerEmail?: string;
 }
 
 const INITIAL_AUCTIONS: AuctionItem[] = [
@@ -101,7 +102,7 @@ export default function AdminWorkspacePage() {
       if (!active) return;
       if (error) { setAuctionNotice(`Could not load auctions: ${error.message}`); return; }
       if (!data?.length) { setItems(INITIAL_AUCTIONS); setAuctionNotice('No auction rows yet; showing the existing site auction fallback items.'); return; }
-      setItems(data.map((row, index) => { const status = String(row.status ?? '').toLowerCase(); return { id: String(row.id), title: row.title, sku: `AU-${String(index + 1).padStart(4, '0')}`, category: 'Auction', startingPrice: Number(row.starting_bid), currentBid: Number(row.current_bid ?? row.starting_bid), stock: 1, status: status === 'draft' ? 'DRAFT' : status === 'scheduled' ? 'SCHEDULED' : ['ended', 'closed', 'sold'].includes(status) ? 'ENDED' : 'PUBLISHED', endTime: row.ends_at ?? undefined, description: row.description ?? '', images: Array.isArray(row.images) ? row.images : typeof row.images === 'string' ? [row.images] : [], minIncrement: Number(row.min_increment ?? 1), productId: row.product_id }; }));
+      setItems(data.map((row, index) => { const status = String(row.status ?? '').toLowerCase(); return { id: String(row.id), title: row.title, sku: `AU-${String(index + 1).padStart(4, '0')}`, category: 'Auction', startingPrice: Number(row.starting_bid), currentBid: Number(row.current_bid ?? row.starting_bid), stock: 1, status: status === 'draft' ? 'DRAFT' : status === 'scheduled' ? 'SCHEDULED' : ['ended', 'closed', 'sold'].includes(status) ? 'ENDED' : 'PUBLISHED', endTime: row.ends_at ?? undefined, description: row.description ?? '', images: Array.isArray(row.images) ? row.images : typeof row.images === 'string' ? [row.images] : [], minIncrement: Number(row.min_increment ?? 1), productId: row.product_id, winnerEmail: row.winner_email ?? undefined }; }));
       setAuctionNotice('Live auction records from Supabase.');
     };
     void load();
@@ -148,13 +149,25 @@ export default function AdminWorkspacePage() {
     e.preventDefault();
     const startingPrice = parseFloat(formPrice) || 0;
     const dbStatus = formStatus === 'DRAFT' ? 'draft' : formStatus === 'SCHEDULED' ? 'scheduled' : formStatus === 'ENDED' ? 'ended' : 'live';
-    const payload = { product_id: editingItem?.productId ?? null, title: formTitle, description: editingItem?.description ?? '', starting_bid: startingPrice, current_bid: editingItem?.currentBid || startingPrice, min_increment: editingItem?.minIncrement ?? 1, images: editingItem?.images?.length ? editingItem.images : ['/products/trading-card.png'], status: dbStatus, ends_at: formEndTime ? new Date(formEndTime).toISOString() : null, winner_email: null };
+    const payload = { product_id: editingItem?.productId ?? null, title: formTitle, description: editingItem?.description ?? '', starting_bid: startingPrice, current_bid: editingItem?.currentBid || startingPrice, min_increment: editingItem?.minIncrement ?? 1, images: editingItem?.images?.length ? editingItem.images : ['/products/trading-card.png'], status: dbStatus, ends_at: formEndTime ? new Date(formEndTime).toISOString() : null, winner_email: editingItem?.winnerEmail ?? null };
     if (!supabase) { setAuctionNotice('Supabase client unavailable; changes were not saved.'); return; }
     const result = editingItem && !INITIAL_AUCTIONS.some((item) => item.id === editingItem.id)
       ? await supabase.from('auctions').update(payload).eq('id', editingItem.id)
       : await supabase.from('auctions').insert(payload);
     if (result.error) { setAuctionNotice(`Auction save failed: ${result.error.message}`); return; }
     setIsModalOpen(false);
+    if (dbStatus === 'ended' && editingItem && !INITIAL_AUCTIONS.some((item) => item.id === editingItem.id)) {
+      try {
+        const emailResponse = await fetch('/api/auction-win-notification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ auctionId: editingItem.id, sku: editingItem.sku }) });
+        if (!emailResponse.ok) {
+          setAuctionNotice('Auction saved. Winner email could not be sent.');
+          return;
+        }
+      } catch {
+        setAuctionNotice('Auction saved. Winner email could not be sent.');
+        return;
+      }
+    }
     setAuctionNotice('Auction saved to Supabase.');
   };
 

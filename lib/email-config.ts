@@ -1,6 +1,7 @@
 const fallbackAddress = 'hello@shopcarolinacache.com'
 
 export const fromAddress = 'Shop Carolina Cache <hello@shopcarolinacache.com>'
+export const replyToAddress = 'hello@shopcarolinacache.com'
 export const inboxAddress = process.env.STORE_INBOX_EMAIL?.trim() || fallbackAddress
 export const publicContactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || fallbackAddress
 
