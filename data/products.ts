@@ -31,15 +31,23 @@ export type Product = InventoryRow & {
   image: string
 }
 
+export function getCategoryFallbackImage(category: Category | string | null | undefined): string {
+  const normalized = String(category ?? '').toLowerCase()
+  if (normalized.includes('card') || normalized.includes('vault') || normalized.includes('sport')) return '/images/category-vault.png'
+  if (normalized.includes('toy') || normalized.includes('figure') || normalized.includes('shelf')) return '/images/category-shelf.png'
+  if (normalized.includes('electronic') || normalized.includes('audio') || normalized.includes('archive')) return '/images/category-archive.png'
+  return '/images/category-archive.png'
+}
+
 const fallbackImages = {
-  rookieLot: 'https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?auto=format&fit=crop&w=1200&q=90',
-  vintageCards: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=1200&q=90',
-  headphones: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=90',
-  console: 'https://images.unsplash.com/photo-1592840496694-26d035b52b48?auto=format&fit=crop&w=1200&q=90',
-  marbles: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=1200&q=90',
-  postcards: 'https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=1200&q=90',
-  photographs: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=90',
-  stamps: 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?auto=format&fit=crop&w=1200&q=90',
+  rookieLot: '/images/category-vault.png',
+  vintageCards: '/images/category-vault.png',
+  headphones: '/images/category-archive.png',
+  console: '/images/category-archive.png',
+  marbles: '/images/category-archive.png',
+  postcards: '/images/category-archive.png',
+  photographs: '/images/category-archive.png',
+  stamps: '/images/category-archive.png',
 }
 
 export function normalizeProductImages(value: unknown): string[] {
