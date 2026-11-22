@@ -14,9 +14,15 @@ export default function CheckoutPage() {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [street, setStreet] = useState('')
+  const [street2, setStreet2] = useState('')
   const [city, setCity] = useState('')
   const [stateCode, setStateCode] = useState('')
   const [zip, setZip] = useState('')
+  const [country, setCountry] = useState('United States')
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true)
+  const [billingAddress, setBillingAddress] = useState({
+    name: '', street1: '', street2: '', city: '', state: '', zip: '', country: 'United States',
+  })
   const [marketingOptIn, setMarketingOptIn] = useState(false)
 
   const protectionFee = subtotal > 100 ? Math.max(1, Math.ceil(subtotal * 0.01)) : 0
@@ -49,9 +55,11 @@ export default function CheckoutPage() {
           })),
           destination: {
             street: street.trim(),
+            street2: street2.trim(),
             city: city.trim(),
             state: cleanState,
             zip: cleanZip,
+            country,
           },
         }),
       })
@@ -115,10 +123,30 @@ export default function CheckoutPage() {
           shipping_address: {
             name: fullName,
             street1: street.trim(),
+            street2: street2.trim(),
             city: city.trim(),
             state: stateCode.trim().toUpperCase(),
-            zip: zip.trim().slice(0, 5),
-            country: 'US',
+            zip: zip.trim(),
+            country,
+          },
+          billing_same_as_shipping: billingSameAsShipping,
+          billing_address: billingSameAsShipping ? {
+            name: fullName,
+            street1: street.trim(),
+            street2: street2.trim(),
+            city: city.trim(),
+            state: stateCode.trim().toUpperCase(),
+            zip: zip.trim(),
+            country,
+          } : {
+            ...billingAddress,
+            name: billingAddress.name.trim(),
+            street1: billingAddress.street1.trim(),
+            street2: billingAddress.street2.trim(),
+            city: billingAddress.city.trim(),
+            state: billingAddress.state.trim().toUpperCase(),
+            zip: billingAddress.zip.trim(),
+            country: billingAddress.country.trim(),
           },
           items: lines.map(({ product, quantity }) => ({
             id: product.id,
@@ -178,13 +206,33 @@ export default function CheckoutPage() {
                 <input required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" aria-label="Last name" className="border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
               </div>
               <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" aria-label="Email address" className="w-full border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
-              <input required value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Shipping address" aria-label="Shipping address" className="w-full border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
+              <input required value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Street address" aria-label="Shipping street address" autoComplete="shipping address-line1" className="w-full border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
+              <input value={street2} onChange={(e) => setStreet2(e.target.value)} placeholder="Apt / Suite (optional)" aria-label="Shipping apartment or suite" autoComplete="shipping address-line2" className="w-full border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
               <div className="grid gap-3 sm:grid-cols-3">
-                <input required value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" aria-label="City" className="border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
-                <input required value={stateCode} onChange={(e) => setStateCode(e.target.value)} placeholder="State (e.g. NC)" aria-label="State" maxLength={2} className="border border-neutral-300 bg-white px-4 py-3 text-sm uppercase outline-none focus:border-emerald-600" />
-                <input required value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="ZIP" aria-label="ZIP" inputMode="numeric" maxLength={5} className="border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
+                <input required value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" aria-label="Shipping city" autoComplete="shipping address-level2" className="border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
+                <input required value={stateCode} onChange={(e) => setStateCode(e.target.value)} placeholder="State (e.g. NC)" aria-label="Shipping state" autoComplete="shipping address-level1" maxLength={2} className="border border-neutral-300 bg-white px-4 py-3 text-sm uppercase outline-none focus:border-emerald-600" />
+                <input required value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="ZIP" aria-label="Shipping ZIP code" autoComplete="shipping postal-code" inputMode="numeric" pattern="[0-9]{5}" maxLength={5} className="border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
               </div>
+              <input required value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Country" aria-label="Shipping country" autoComplete="shipping country-name" className="w-full border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
             </fieldset>
+
+            <label className="flex cursor-pointer items-start gap-3 border border-neutral-200 bg-white p-4 text-sm text-neutral-700">
+              <input type="checkbox" checked={billingSameAsShipping} onChange={(event) => setBillingSameAsShipping(event.target.checked)} className="mt-0.5 size-4 accent-emerald-700" />
+              <span>Billing address is the same as shipping address</span>
+            </label>
+
+            {!billingSameAsShipping && <fieldset className="space-y-4 border border-neutral-200 bg-white p-5">
+              <legend className="px-2 text-lg font-black">Billing address</legend>
+              <input required value={billingAddress.name} onChange={(e) => setBillingAddress((current) => ({ ...current, name: e.target.value }))} placeholder="Full name" aria-label="Billing full name" autoComplete="billing name" className="w-full border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
+              <input required value={billingAddress.street1} onChange={(e) => setBillingAddress((current) => ({ ...current, street1: e.target.value }))} placeholder="Street address" aria-label="Billing street address" autoComplete="billing address-line1" className="w-full border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
+              <input value={billingAddress.street2} onChange={(e) => setBillingAddress((current) => ({ ...current, street2: e.target.value }))} placeholder="Apt / Suite (optional)" aria-label="Billing apartment or suite" autoComplete="billing address-line2" className="w-full border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
+              <div className="grid gap-3 sm:grid-cols-3">
+                <input required value={billingAddress.city} onChange={(e) => setBillingAddress((current) => ({ ...current, city: e.target.value }))} placeholder="City" aria-label="Billing city" autoComplete="billing address-level2" className="border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
+                <input required value={billingAddress.state} onChange={(e) => setBillingAddress((current) => ({ ...current, state: e.target.value }))} placeholder="State" aria-label="Billing state" autoComplete="billing address-level1" maxLength={2} className="border border-neutral-300 bg-white px-4 py-3 text-sm uppercase outline-none focus:border-emerald-600" />
+                <input required value={billingAddress.zip} onChange={(e) => setBillingAddress((current) => ({ ...current, zip: e.target.value.replace(/\D/g, '').slice(0, 5) }))} placeholder="ZIP" aria-label="Billing ZIP code" autoComplete="billing postal-code" inputMode="numeric" pattern="[0-9]{5}" maxLength={5} className="border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
+              </div>
+              <input required value={billingAddress.country} onChange={(e) => setBillingAddress((current) => ({ ...current, country: e.target.value }))} placeholder="Country" aria-label="Billing country" autoComplete="billing country-name" className="w-full border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
+            </fieldset>}
 
             <label className="flex items-start gap-3 border border-neutral-200 bg-white p-4 text-sm text-neutral-700">
               <input type="checkbox" checked={marketingOptIn} onChange={(event) => setMarketingOptIn(event.target.checked)} className="mt-0.5 size-4 accent-emerald-700" />

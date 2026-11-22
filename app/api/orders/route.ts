@@ -4,6 +4,18 @@ import { sendOrderNotifications } from "@/lib/email";
 import { upsertCustomer } from "@/lib/customers";
 import { isRateLimited, isValidEmail } from "@/lib/request-security";
 
+function isValidAddress(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const address = value as Record<string, unknown>;
+  return typeof address.name === "string" && address.name.trim().length >= 2 && address.name.length <= 160 &&
+    typeof address.street1 === "string" && address.street1.trim().length > 0 && address.street1.length <= 200 &&
+    (address.street2 === undefined || typeof address.street2 === "string" && address.street2.length <= 100) &&
+    typeof address.city === "string" && address.city.trim().length > 0 && address.city.length <= 100 &&
+    typeof address.state === "string" && address.state.trim().length >= 2 && address.state.length <= 100 &&
+    typeof address.zip === "string" && /^\d{5}$/.test(address.zip) &&
+    typeof address.country === "string" && address.country.trim().length > 0 && address.country.length <= 100;
+}
+
 export async function POST(req: Request) {
   if (isRateLimited(req, "order-submit", 5)) {
     return NextResponse.json({ error: "Too many order attempts. Please try again shortly." }, { status: 429 });
@@ -15,6 +27,8 @@ export async function POST(req: Request) {
       customer_name,
       customer_email,
       shipping_address,
+      billing_address,
+      billing_same_as_shipping = true,
       items = [],
       subtotal = 0,
       shipping_cost = 0,
@@ -27,8 +41,10 @@ export async function POST(req: Request) {
 
     if (
       typeof customer_name !== "string" || customer_name.trim().length < 2 || customer_name.length > 160 ||
-      !isValidEmail(customer_email) || typeof shipping_address?.zip !== "string" ||
-      shipping_address.zip.length !== 5 || !Array.isArray(items) || items.length < 1 || items.length > 50 ||
+      !isValidEmail(customer_email) || !isValidAddress(shipping_address) ||
+      typeof billing_same_as_shipping !== "boolean" ||
+      (!billing_same_as_shipping && !isValidAddress(billing_address)) ||
+      !Array.isArray(items) || items.length < 1 || items.length > 50 ||
       ![subtotal, shipping_cost, protection_fee, total].every((value) => Number.isFinite(Number(value)) && Number(value) >= 0) ||
       items.some((item: any) => typeof item?.name !== "string" || item.name.length > 200 ||
         !Number.isInteger(Number(item.quantity)) || Number(item.quantity) < 1 || Number(item.quantity) > 20 ||
@@ -36,6 +52,27 @@ export async function POST(req: Request) {
     ) {
       return NextResponse.json({ error: "Check your customer, shipping, and order details." }, { status: 400 });
     }
+
+    const normalizedShippingAddress = {
+      ...shipping_address,
+      name: shipping_address.name.trim(),
+      street1: shipping_address.street1.trim(),
+      street2: typeof shipping_address.street2 === "string" ? shipping_address.street2.trim() : "",
+      city: shipping_address.city.trim(),
+      state: shipping_address.state.trim().toUpperCase(),
+      zip: shipping_address.zip.trim(),
+      country: shipping_address.country.trim(),
+    };
+    const normalizedBillingAddress = billing_same_as_shipping ? normalizedShippingAddress : {
+      ...billing_address,
+      name: billing_address.name.trim(),
+      street1: billing_address.street1.trim(),
+      street2: typeof billing_address.street2 === "string" ? billing_address.street2.trim() : "",
+      city: billing_address.city.trim(),
+      state: billing_address.state.trim().toUpperCase(),
+      zip: billing_address.zip.trim(),
+      country: billing_address.country.trim(),
+    };
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/['"]/g, "").trim();
     const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.replace(/['"]/g, "").trim();
@@ -51,7 +88,7 @@ export async function POST(req: Request) {
       customerRecord = await upsertCustomer({
         email: customer_email,
         full_name: customer_name,
-        default_shipping_address: shipping_address,
+        ...(billing_same_as_shipping ? { default_shipping_address: normalizedShippingAddress } : {}),
         acquisition_source: "checkout",
         marketing_opt_in: marketing_opt_in === true,
         favorite_categories: items.map((item: any) => item.category).filter((category: unknown): category is string => typeof category === "string"),
@@ -111,7 +148,9 @@ export async function POST(req: Request) {
         customer_name,
         customer_email: customer_email.trim().toLowerCase(),
         customer_id: customerId,
-        shipping_address,
+        shipping_address: normalizedShippingAddress,
+        billing_address: normalizedBillingAddress,
+        billing_same_as_shipping,
         items,
         subtotal: Number(subtotal),
         shipping_cost: Number(shipping_cost),
@@ -155,7 +194,9 @@ export async function POST(req: Request) {
         subtotal: Number(subtotal),
         shipping: Number(shipping_cost),
         total: Number(total),
-        shippingAddress: shipping_address,
+        shippingAddress: normalizedShippingAddress,
+        billingAddress: normalizedBillingAddress,
+        billingSameAsShipping: billing_same_as_shipping,
       });
     } catch {
       notificationsSent = false;
