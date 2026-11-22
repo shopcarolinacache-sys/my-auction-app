@@ -191,9 +191,117 @@ export default function AdminOrders() {
     {notice && <div role="status" className="flex items-start gap-3 border border-neutral-200 bg-white p-4 text-sm text-neutral-700"><CircleAlert className="mt-0.5 size-5 shrink-0 text-emerald-700" aria-hidden="true" />{notice}</div>}
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Order summary">{summary.map(({ label, value, icon: Icon }) => <div key={label} className="border border-neutral-200 bg-white p-4 sm:p-5"><div className="flex items-center justify-between"><span className="text-sm font-medium text-neutral-600">{label}</span><span className="grid size-9 place-items-center bg-emerald-50 text-emerald-700"><Icon className="size-4" aria-hidden="true" /></span></div><p className="mt-4 text-2xl font-black tracking-tight text-neutral-950">{value}</p><p className="mt-1 text-xs text-neutral-500">Live from Supabase</p></div>)}</div>
     <div className="overflow-hidden border border-neutral-200 bg-white"><div className="border-b border-neutral-200 p-4 sm:p-5"><div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center"><div><h2 className="font-bold text-neutral-950">Orders</h2><p className="mt-1 text-xs text-neutral-500">Filter by fulfillment stage or search for an order.</p></div><label className="relative block min-w-0 sm:w-72"><span className="sr-only">Search orders by customer or order ID</span><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" aria-hidden="true" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search customer, city, SKU or order ID" className="w-full border border-neutral-300 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100" /></label></div><div className="mt-5 -mb-4 flex gap-1 overflow-x-auto pb-1" role="group" aria-label="Filter orders by status">{filters.map(({ label, icon: Icon }) => <button key={label} type="button" aria-pressed={filter === label} onClick={() => setFilter(label)} className={`inline-flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-xs font-bold transition ${filter === label ? 'border-emerald-600 text-emerald-800' : 'border-transparent text-neutral-500 hover:text-neutral-900'}`}><Icon className="size-3.5" aria-hidden="true" />{label}</button>)}</div></div>
-      <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left"><thead className="bg-neutral-50 text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-500"><tr><th className="px-4 py-3"><input type="checkbox" aria-label="Select all visible orders" checked={visible.length > 0 && visible.every((order) => selectedOrderIds.includes(order.id))} onChange={(event) => setSelectedOrderIds((current) => event.target.checked ? [...new Set([...current, ...visible.map((order) => order.id)])] : current.filter((id) => !visible.some((order) => order.id === id)))} /></th>{['Order / customer', 'Ship to / items', 'Date', 'Payment', 'Fulfillment', 'Total', 'Prepare'].map((label) => <th key={label} className="px-4 py-3">{label}</th>)}</tr></thead><tbody>{visible.map((order) => { const items = itemsFor(order); const skus = items.map((item) => String(item.sku ?? '')).filter(Boolean); return <tr key={order.id} className="border-t border-neutral-100 align-top hover:bg-neutral-50/70"><td className="px-4 py-4"><input type="checkbox" aria-label={`Select order ${order.order_number}`} checked={selectedOrderIds.includes(order.id)} onChange={(event) => setSelectedOrderIds((current) => event.target.checked ? [...current, order.id] : current.filter((id) => id !== order.id))} /></td><td className="px-4 py-4"><p className="font-bold text-neutral-900">{order.order_number}</p><p className="mt-1 text-sm">{order.customer_name}</p><p className="text-xs text-neutral-500">{order.customer_email}</p></td><td className="px-4 py-4"><p className="text-sm font-medium text-neutral-800">{shipCity(order)}</p><p className="mt-1 text-xs text-neutral-500">{items.length} item{items.length === 1 ? '' : 's'}{skus.length ? ` · ${skus.join(', ')}` : ''}</p></td><td className="px-4 py-4 text-sm text-neutral-600">{new Date(order.created_at).toLocaleDateString()}</td><td className="px-4 py-4"><span className="text-xs font-bold capitalize">{order.payment_status}</span></td><td className="min-w-40 px-4 py-4"><select aria-label={`Fulfillment status for ${order.order_number}`} value={order.fulfillment_status} onChange={(event) => void updateOrder(order.id, { fulfillment_status: event.target.value })} className="w-full border border-neutral-300 bg-white px-2 py-2 text-sm capitalize">{['unfulfilled', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'].map((status) => <option key={status} value={status}>{status}</option>)}</select>{order.carrier && <p className="mt-1 text-xs text-neutral-500">{order.carrier}{order.tracking_number ? ` · ${order.tracking_number}` : ''}</p>}</td><td className="px-4 py-4 text-sm font-semibold">${Number(order.total || 0).toFixed(2)}</td><td className="px-4 py-4"><Button size="sm" variant="outline" onClick={() => setSelected(order)}><ClipboardList data-icon="inline-start" />Prepare Order</Button></td></tr> })}{!visible.length && <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-neutral-500">No orders match this view.</td></tr>}</tbody></table></div>
+      <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left"><thead className="bg-neutral-50 text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-500">
+                <tr>
+                  <th className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all visible orders"
+                      checked={visible.length > 0 && visible.every((order) => selectedOrderIds.includes(order.id))}
+                      onChange={(event) =>
+                        setSelectedOrderIds((current) =>
+                          event.target.checked
+                            ? [...new Set([...current, ...visible.map((order) => order.id)])]
+                            : current.filter((id) => !visible.some((order) => order.id === id))
+                        )
+                      }
+                    />
+                  </th>
+                  {[ 'Order / customer', 'Ship to / items', 'Date', 'Payment', 'Fulfillment', 'Total', 'Prepare', ].map((label) => (
+                    <th key={label} className="px-4 py-3">
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((order) => {
+                  const items = itemsFor(order)
+                  const skus = items.map((item) => String(item.sku ?? '')).filter(Boolean)
+                  return (
+                    <tr key={order.id} className="border-t border-neutral-100 align-top hover:bg-neutral-50/70">
+                      <td className="px-4 py-4">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select order ${order.order_number}`}
+                          checked={selectedOrderIds.includes(order.id)}
+                          onChange={(event) =>
+                            setSelectedOrderIds((current) =>
+                              event.target.checked ? [...current, order.id] : current.filter((id) => id !== order.id)
+                            )
+                          }
+                        />
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="font-bold text-neutral-900">{order.order_number}</p>
+                        <p className="mt-1 text-sm">{order.customer_name}</p>
+                        <p className="text-xs text-neutral-500">{order.customer_email}</p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="text-sm font-medium text-neutral-800">{shipCity(order)}</p>
+                        <p className="mt-1 text-xs text-neutral-500">
+                          {items.length} item{items.length === 1 ? '' : 's'}
+                          {skus.length ? ` · ${skus.join(', ')}` : ''}
+                        </p>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-neutral-600">
+                        {new Date(order.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className="text-xs font-bold capitalize">{order.payment_status}</span>
+                      </td>
+                      <td className="min-w-40 px-4 py-4">
+                        <select
+                          aria-label={`Fulfillment status for ${order.order_number}`}
+                          value={order.fulfillment_status}
+                          onChange={(event) => void updateOrder(order.id, { fulfillment_status: event.target.value })}
+                          className="w-full border border-neutral-300 bg-white px-2 py-2 text-sm capitalize"
+                        >
+                          {[ 'unfulfilled', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded', ].map((status) => (
+                            <option key={status} value={status}>
+                              {status}
+                            </option>
+                          ))}
+                        </select>
+                        {order.carrier && (
+                          <p className="mt-1 text-xs text-neutral-500">
+                            {order.carrier}{order.tracking_number ? ` · ${order.tracking_number}` : ''}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-semibold">
+                        ${Number(order.total || 0).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-4">
+                        <Button size="sm" variant="outline" onClick={() => setSelected(order)}>
+                          <ClipboardList data-icon="inline-start" />Prepare Order
+                        </Button>
+                      </td>
+                    </tr>
+                  )
+                })}
+                {!visible.length && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-10 text-center text-sm text-neutral-500">
+                      No orders match this view.
+                    </td>
+                  </tr>
+                )}
+              </tbody></table></div>
       <div className="flex flex-col gap-3 border-t border-neutral-200 bg-neutral-50 px-5 py-3 text-xs text-neutral-500 sm:flex-row sm:items-center sm:justify-between"><span>{visible.length} of {orders.length} orders</span><span>Status, notes, and shipping updates save to Supabase.</span></div></div>
-    {selected && <AdminOrderPreparation order={selected} onClose={() => setSelected(null)} onProcessing={() => void moveToProcessing(selected)} onShip={() => void markShipped(selected)} shipment={shipmentInputs[selected.id] ?? { carrier: selected.carrier ?? '', trackingNumber: selected.tracking_number ?? '' }} onShipmentChange={(value) => setShipmentInputs((current) => ({ ...current, [selected.id]: value }))} onNotesChange={(value) => void updateOrder(selected.id, { notes: value })} busy={busy} />}
+    {selected && <AdminOrderPreparation
+      order={selected}
+      onClose={() => setSelected(null)}
+      onProcessing={() => void moveToProcessing(selected)}
+      onShip={() => void markShipped(selected)}
+      shipment={shipmentInputs[selected.id] ?? { carrier: selected.carrier ?? '', trackingNumber: selected.tracking_number ?? '' }}
+      onShipmentChange={(value) => setShipmentInputs((current) => ({ ...current, [selected.id]: value }))}
+      onNotesChange={(value) => void updateOrder(selected.id, { notes: value })}
+      busy={busy}
+      allOrders={orders}
+      selectedOrders={selectedOrderIds}
+      setSelectedOrders={setSelectedOrderIds}
+    />}
     {trackingImportOpen && <AdminTrackingImport orders={orders} onClose={() => setTrackingImportOpen(false)} onConfirm={(rows, sendEmails) => void importTracking(rows, sendEmails)} busy={busy} />}
   </section>
 }
