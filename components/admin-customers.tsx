@@ -5,9 +5,9 @@ import { Download, Mail, Search, Users, DollarSign, Repeat2, Send, RefreshCw, X 
 import { getBrowserSupabase } from '@/lib/supabase-browser'
 
 type Customer = {
-  id: string; email: string; full_name: string | null; phone: string | null; default_shipping_address: unknown
+  id: string | null; email: string; full_name: string | null; phone: string | null; default_shipping_address: unknown
   acquisition_source: string | null; marketing_opt_in: boolean; favorite_categories: string[] | null; tags: string[] | null
-  notes: string | null; total_orders: number | null; total_spent: number | null; auctions_won: number | null; last_activity_at?: string | null
+  notes: string | null; total_orders: number | null; total_spent: number | null; auctions_won: number | null; last_activity_at?: string | null; is_lead: boolean
 }
 type HistoryRow = { id: string; created_at: string; order_number?: string; items?: unknown; total?: number; subtotal?: number; carrier?: string | null; tracking_number?: string | null; fulfillment_status?: string; auction_id?: string; amount?: number; bidder_name?: string }
 const filters = ['All', 'VIP ($250+)', 'Repeat Buyers', 'Auction Winners', 'Marketing Opt-In', 'Leads'] as const
@@ -31,17 +31,25 @@ export default function AdminCustomers() {
   const [emailMessage, setEmailMessage] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const reload = async () => {
-    if (!client) { setNotice('Supabase is unavailable.'); return }
-    const { data, error } = await client.from('customers').select('id,email,full_name,phone,default_shipping_address,acquisition_source,marketing_opt_in,favorite_categories,tags,notes,total_orders,total_spent,auctions_won,last_activity_at').order('last_activity_at', { ascending: false })
-    if (error) { setNotice(`Could not load customers: ${error.message}`); return }
-    setCustomers((data ?? []) as Customer[])
-    setNotice(data?.length ? '' : 'No customer records yet. New orders and leads will appear here.')
+    const reload = async () => {
+    setNotice('Loading customers…')
+    try {
+      const response = await fetch('/api/admin/customers')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to load customers')
+      }
+      const data = await response.json()
+      setCustomers(data as Customer[])
+      setNotice(data?.length ? '' : 'No customer records yet. New orders and leads will appear here.')
+    } catch (error) {
+      setNotice(error instanceof Error ? `Could not load customers: ${error.message}` : 'Could not load customers.')
+    }
   }
 
-  useEffect(() => { void reload() }, [client])
-  useEffect(() => {
-    if (!client || !selected) { setOrders([]); setBids([]); return }
+  useEffect(() => { void reload() }, [])
+    useEffect(() => {
+    if (!client || !selected || !selected.id) { setOrders([]); setBids([]); return }
     setTagDraft((selected.tags ?? []).join(', '))
     setNoteDraft(selected.notes ?? '')
     void Promise.all([
@@ -63,7 +71,7 @@ export default function AdminCustomers() {
     if (filter === 'Repeat Buyers') return Number(customer.total_orders) > 1
     if (filter === 'Auction Winners') return Number(customer.auctions_won) > 0
     if (filter === 'Marketing Opt-In') return customer.marketing_opt_in
-    if (filter === 'Leads') return Number(customer.total_orders) === 0
+    if (filter === 'Leads') return customer.is_lead && Number(customer.total_orders) === 0 && Number(customer.auctions_won) === 0
     return true
   }), [customers, filter, search])
   const stats = [
@@ -73,44 +81,40 @@ export default function AdminCustomers() {
     { label: 'Marketing subscribers', value: String(customers.filter((customer) => customer.marketing_opt_in).length), icon: Mail },
   ]
 
-  async function saveCustomer(values: Partial<Customer>) {
-    if (!client || !selected) return
+    async function saveCustomer(values: Partial<Customer>) {
+    if (!client || !selected || !selected.id) return
     const { error } = await client.from('customers').update(values).eq('id', selected.id)
     if (error) { setNotice(`Could not save customer: ${error.message}`); return }
     const updated = { ...selected, ...values }
     setSelected(updated); setCustomers((current) => current.map((item) => item.id === updated.id ? updated : item)); setNotice('Customer updated.')
   }
   function exportCsv() {
-    const rows = [['Name', 'Email', 'Phone', 'Orders', 'Lifetime spend', 'Marketing opt-in', 'Tags', 'Categories'], ...visible.map((customer) => [customer.full_name, customer.email, customer.phone, customer.total_orders, customer.total_spent, customer.marketing_opt_in ? 'yes' : 'no', (customer.tags ?? []).join('; '), (customer.favorite_categories ?? []).join('; ')])]
+        const rows = [['Name', 'Email', 'Phone', 'Orders', 'Lifetime spend', 'Marketing opt-in', 'Tags', 'Categories', 'Is Lead'], ...visible.map((customer) => [customer.full_name, customer.email, customer.phone, customer.total_orders, customer.total_spent, customer.marketing_opt_in ? 'yes' : 'no', (customer.tags ?? []).join('; '), (customer.favorite_categories ?? []).join('; '), customer.is_lead ? 'yes' : 'no'])]
     const url = URL.createObjectURL(new Blob([rows.map((row) => row.map(csvCell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }))
     const link = document.createElement('a'); link.href = url; link.download = 'carolina-cache-customers.csv'; link.click(); URL.revokeObjectURL(url)
   }
-  async function syncOrders() {
-    if (!client) return
+    async function syncOrders() {
     setBusy(true); setNotice('Syncing historical orders…')
-    const orderRows: Array<{ id: string; customer_name: string; customer_email: string; shipping_address: unknown; total: number }> = []
-    for (let offset = 0; ; offset += 1000) {
-      const { data, error } = await client.from('orders').select('id,customer_name,customer_email,shipping_address,total,created_at').order('created_at', { ascending: false }).range(offset, offset + 999)
-      if (error) { setNotice(`Order sync failed: ${error.message}`); setBusy(false); return }
-      orderRows.push(...(data ?? []) as typeof orderRows)
-      if (!data || data.length < 1000) break
+    try {
+      const response = await fetch('/api/admin/customers/sync', { method: 'POST' })
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Sync failed')
+      }
+
+      if (result.failed > 0) {
+        const errorMessages = result.errors.map((err: any) => `Email: ${err.email}, Message: ${err.message}, Code: ${err.code}`).join('; ')
+        setNotice(`Sync completed with ${result.failed} customer record${result.failed === 1 ? '' : 's'} rejected. Details: ${errorMessages}`)
+      } else {
+        setNotice(`Synced ${result.total} customers from historical orders.`)
+      }
+      await reload()
+    } catch (error) {
+      setNotice(error instanceof Error ? `Order sync failed: ${error.message}` : 'Order sync failed.')
+    } finally {
+      setBusy(false)
     }
-    const grouped = new Map<string, { email: string; full_name: string; address: unknown; total: number; orders: number; orderIds: string[] }>()
-    for (const order of orderRows) {
-      const email = String(order.customer_email ?? '').trim().toLowerCase(); if (!email) continue
-      const previous = grouped.get(email) ?? { email, full_name: order.customer_name ?? '', address: order.shipping_address, total: 0, orders: 0, orderIds: [] }
-      previous.total += Number(order.total ?? 0); previous.orders += 1; previous.orderIds.push(order.id)
-      grouped.set(email, previous)
-    }
-    let failed = 0
-    for (const customer of grouped.values()) {
-      const current = customers.find((item) => item.email.toLowerCase() === customer.email)
-      const result = await client.from('customers').upsert({ email: customer.email, full_name: customer.full_name || current?.full_name, default_shipping_address: customer.address ?? current?.default_shipping_address, total_orders: customer.orders, total_spent: customer.total, last_activity_at: new Date().toISOString() }, { onConflict: 'email' }).select('id').single()
-      if (result.error || !result.data?.id) { failed++; continue }
-      const { error: linkError } = await client.from('orders').update({ customer_id: result.data.id }).in('id', customer.orderIds)
-      if (linkError) failed++
-    }
-    await reload(); setNotice(failed ? `Sync completed with ${failed} customer record${failed === 1 ? '' : 's'} rejected.` : `Synced ${grouped.size} customers from historical orders.`); setBusy(false)
   }
   async function sendEmail(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!selected || busy) return
@@ -128,7 +132,7 @@ export default function AdminCustomers() {
     {notice && <p role="status" className="border border-neutral-200 bg-white p-3 text-sm text-neutral-700">{notice}</p>}
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{stats.map(({ label, value, icon: Icon }) => <article key={label} className="flex items-center justify-between border border-neutral-200 bg-white p-4"><div><p className="text-xs font-medium text-neutral-500">{label}</p><p className="mt-2 text-2xl font-black">{value}</p></div><span className="grid size-10 place-items-center bg-emerald-50 text-emerald-800"><Icon className="size-5" /></span></article>)}</div>
     <div className="overflow-hidden border border-neutral-200 bg-white"><div className="border-b border-neutral-200 p-4"><div className="flex flex-col justify-between gap-3 md:flex-row md:items-center"><div><h2 className="font-bold">Customer directory</h2><p className="mt-1 text-xs text-neutral-500">Search profiles, then open a record for engagement history.</p></div><label className="relative block w-full md:max-w-sm"><span className="sr-only">Search customers by name, email, or tag</span><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, email, or tag" className="w-full border border-neutral-300 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-emerald-700" /></label></div><div className="mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Customer segments">{filters.map((item) => <button type="button" key={item} aria-pressed={filter === item} onClick={() => setFilter(item)} className={`shrink-0 border px-3 py-2 text-xs font-bold ${filter === item ? 'border-neutral-950 bg-neutral-950 text-white' : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'}`}>{item}</button>)}</div></div>
-    <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead className="bg-neutral-50 text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-500"><tr>{['Customer', 'Orders', 'Lifetime value', 'Segments', 'Marketing', 'Last activity'].map((heading) => <th key={heading} className="px-4 py-3">{heading}</th>)}</tr></thead><tbody>{visible.map((customer) => <tr key={customer.id} className="border-t border-neutral-100 hover:bg-emerald-50/40"><td className="px-4 py-4"><button type="button" onClick={() => setSelected(customer)} className="text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700"><span className="block font-bold">{customer.full_name || 'Name not provided'}</span><span className="block text-xs text-neutral-500">{customer.email}</span></button></td><td className="px-4 py-4 text-sm">{customer.total_orders ?? 0}</td><td className="px-4 py-4 text-sm font-semibold">{money(Number(customer.total_spent))}</td><td className="px-4 py-4"><div className="flex flex-wrap gap-1">{(customer.tags ?? []).map((tag) => <span key={tag} className="bg-neutral-100 px-2 py-1 text-[10px] font-bold">{tag}</span>)}</div></td><td className="px-4 py-4 text-xs">{customer.marketing_opt_in ? 'Subscribed' : 'Not subscribed'}</td><td className="px-4 py-4 text-xs text-neutral-500">{customer.last_activity_at ? new Date(customer.last_activity_at).toLocaleDateString() : '—'}</td></tr>)}</tbody></table>{!visible.length && <p className="p-8 text-center text-sm text-neutral-500">No customers match this segment.</p>}</div><footer className="border-t border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-500">Showing {visible.length} of {customers.length} customers</footer></div>
+    <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead className="bg-neutral-50 text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-500"><tr>{['Customer', 'Orders', 'Lifetime value', 'Segments', 'Marketing', 'Last activity'].map((heading) => <th key={heading} className="px-4 py-3">{heading}</th>)}</tr></thead><tbody>{visible.map((customer) => <tr key={customer.id || customer.email} className="border-t border-neutral-100 hover:bg-emerald-50/40"><td className="px-4 py-4"><button type="button" onClick={() => setSelected(customer)} className="text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700"><span className="block font-bold">{customer.full_name || 'Name not provided'}</span><span className="block text-xs text-neutral-500">{customer.email}</span></button></td><td className="px-4 py-4 text-sm">{customer.total_orders ?? 0}</td><td className="px-4 py-4 text-sm font-semibold">{money(Number(customer.total_spent))}</td><td className="px-4 py-4"><div className="flex flex-wrap gap-1">{(customer.tags ?? []).map((tag) => <span key={tag} className="bg-neutral-100 px-2 py-1 text-[10px] font-bold">{tag}</span>)}</div></td><td className="px-4 py-4 text-xs">{customer.marketing_opt_in ? 'Subscribed' : 'Not subscribed'}</td><td className="px-4 py-4 text-xs text-neutral-500">{customer.last_activity_at ? new Date(customer.last_activity_at).toLocaleDateString() : '—'}</td></tr>)}</tbody></table>{!visible.length && <p className="p-8 text-center text-sm text-neutral-500">No customers match this segment.</p>}</div><footer className="border-t border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-500">Showing {visible.length} of {customers.length} customers</footer></div>
     {selected && <div className="fixed inset-0 z-50 flex justify-end bg-neutral-950/45" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null) }}><section role="dialog" aria-modal="true" aria-labelledby="customer-detail-title" className="flex h-full w-full max-w-2xl flex-col overflow-y-auto bg-white shadow-2xl"><header className="sticky top-0 flex items-start justify-between border-b border-neutral-200 bg-white p-5"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">Customer profile</p><h2 id="customer-detail-title" className="mt-1 text-2xl font-black">{selected.full_name || selected.email}</h2><p className="text-sm text-neutral-500">{selected.email}</p></div><button type="button" onClick={() => setSelected(null)} aria-label="Close customer detail" className="grid size-9 place-items-center hover:bg-neutral-100"><X className="size-4" /></button></header><div className="flex flex-col gap-6 p-5"><div className="grid gap-3 sm:grid-cols-2"><div className="border border-neutral-200 p-4"><p className="text-xs text-neutral-500">Lifetime value</p><p className="mt-1 text-xl font-black">{money(Number(selected.total_spent))}</p><p className="mt-2 text-xs text-neutral-500">{selected.total_orders ?? 0} orders · {selected.auctions_won ?? 0} auction wins</p></div><div className="border border-neutral-200 p-4"><p className="text-xs text-neutral-500">Contact & shipping</p><p className="mt-1 text-sm">{selected.phone || 'No phone on file'}</p><p className="mt-2 text-xs text-neutral-600">{addressText(selected.default_shipping_address)}</p></div></div>
       <div className="flex flex-col gap-2"><label htmlFor="customer-tags" className="text-xs font-bold uppercase tracking-wide">Tags</label><div className="flex gap-2"><input id="customer-tags" value={tagDraft} onChange={(event) => setTagDraft(event.target.value)} className="min-w-0 flex-1 border border-neutral-300 px-3 py-2 text-sm" placeholder="VIP, Live Bidder" /><button type="button" onClick={() => void saveCustomer({ tags: [...new Set(tagDraft.split(',').map((tag) => tag.trim()).filter(Boolean))] })} className="bg-neutral-950 px-4 text-xs font-bold text-white">Save</button></div></div>
       <div className="flex flex-col gap-2"><label htmlFor="customer-notes" className="text-xs font-bold uppercase tracking-wide">Admin notes</label><textarea id="customer-notes" rows={4} maxLength={5000} value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} className="resize-y border border-neutral-300 p-3 text-sm" placeholder="Private notes for your team" /><button type="button" disabled={busy} onClick={() => void saveCustomer({ notes: noteDraft.trim() || null })} className="self-start bg-neutral-950 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">Save notes</button></div>
