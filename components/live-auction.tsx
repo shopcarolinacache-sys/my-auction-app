@@ -140,10 +140,9 @@ export function LiveAuction() {
     if (!Number.isFinite(amount) || amount < minimumBid) { setBidFeedback(`Your bid must be at least ${money(minimumBid)}.`); return }
     if (!bidderName.trim() || !bidderEmail.trim()) { setBidFeedback('Enter your name and email to place a bid.'); return }
     if (!client || auction.id === seedAuction.id) { setBidFeedback('This fallback auction is not in Supabase yet, so bids cannot be saved.'); return }
-    const { data: savedBid, error: bidError } = await client.from('bids').insert({ auction_id: auction.id, bidder_name: bidderName.trim(), bidder_email: bidderEmail.trim(), amount }).select('id').single()
-    if (bidError || !savedBid) { setBidFeedback(`Bid could not be saved: ${bidError?.message || 'Please try again.'}`); return }
-    const { error: auctionError } = await client.from('auctions').update({ current_bid: amount, winner_email: bidderEmail.trim() }).eq('id', auction.id)
-    if (auctionError) { setBidFeedback(`Bid recorded, but auction total failed to update: ${auctionError.message}`); return }
+    const bidResponse = await fetch('/api/auction-bids', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ auctionId: auction.id, name: bidderName.trim(), email: bidderEmail.trim(), amount }) })
+    const bidResult = await bidResponse.json()
+    if (!bidResponse.ok || !bidResult.bidId) { setBidFeedback(bidResult.error || 'Bid could not be saved. Please try again.'); return }
     setAuction((current) => ({ ...current, currentBid: amount, bidder: `${bidderName.trim().slice(0, 1)}***` }))
     setActivity((current) => [{ text: `You are leading at ${money(amount)}`, time: 'just now', tone: 'accent' as const }, ...current].slice(0, 5))
     setBid('')
@@ -152,7 +151,7 @@ export function LiveAuction() {
       const notification = await fetch('/api/auction-bid-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bidId: savedBid.id }),
+        body: JSON.stringify({ bidId: bidResult.bidId }),
       })
       setBidFeedback(notification.ok ? 'Bid saved. Confirmation email sent.' : 'Bid saved, but email notifications could not be sent.')
     } catch {

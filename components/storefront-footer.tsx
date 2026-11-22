@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { publicContactEmail } from '@/lib/email-config'
+import { NewsletterSignup } from '@/components/newsletter-signup'
 
 const footerLinkClass = 'text-sm text-zinc-400 transition hover:text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400'
 
@@ -22,7 +23,7 @@ export function StorefrontFooter() {
           <div className="mt-6 border-t border-zinc-800 pt-5">
             <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-200">Notes from the Cache</h3>
             <p className="mt-2 text-xs leading-relaxed text-zinc-500">New arrivals and early access, delivered occasionally.</p>
-            <a href={`mailto:${publicContactEmail}?subject=Newsletter%20signup`} className="mt-3 inline-flex border-b border-emerald-500 pb-1 text-xs font-bold uppercase tracking-[0.12em] text-emerald-300 hover:text-white">Join the newsletter</a>
+            <NewsletterSignup />
           </div>
         </section>
         <nav aria-label="Quick links">

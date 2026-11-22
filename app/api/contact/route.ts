@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { sendContactEmail } from '@/lib/email'
+import { upsertCustomer } from '@/lib/customers'
 import { isRateLimited, isValidEmail } from '@/lib/request-security'
 
 export const runtime = 'nodejs'
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Check the item, budget, and details, then try again.' }, { status: 400 })
       }
 
+      await upsertCustomer({ email: body.email, full_name: typeof body.name === 'string' ? body.name : undefined, acquisition_source: 'inquiry' }).catch((error) => console.error('Inquiry customer upsert failed:', error))
       await sendContactEmail({
         replyTo: body.email,
         customerName: typeof body.name === 'string' ? body.name.slice(0, 160) : undefined,
@@ -44,6 +46,7 @@ export async function POST(request: Request) {
     }
 
     if (body.type === 'next-drop') {
+      await upsertCustomer({ email: body.email, acquisition_source: 'newsletter', marketing_opt_in: true }).catch((error) => console.error('Newsletter customer upsert failed:', error))
       await sendContactEmail({
         replyTo: body.email,
         subject: 'Notify me for the next drop',
@@ -61,6 +64,7 @@ export async function POST(request: Request) {
       if (!message || message.length > maxTextLength || (body.name !== undefined && (typeof body.name !== 'string' || body.name.length > 160))) {
         return NextResponse.json({ error: 'Enter a message under 2,000 characters.' }, { status: 400 })
       }
+      await upsertCustomer({ email: body.email, full_name: customerName || undefined, acquisition_source: 'inquiry' }).catch((error) => console.error('Inquiry customer upsert failed:', error))
       await sendContactEmail({
         replyTo: body.email,
         customerName,

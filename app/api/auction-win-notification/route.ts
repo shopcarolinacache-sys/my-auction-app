@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendAuctionWinEmail } from '@/lib/email'
-import { isRateLimited } from '@/lib/request-security'
+import { upsertCustomer } from '@/lib/customers'
+import { claimOnce, isRateLimited } from '@/lib/request-security'
 
 export const runtime = 'nodejs'
 
@@ -27,6 +28,13 @@ export async function POST(request: Request) {
     }
     if (!data.winner_email || !/^\S+@\S+\.\S+$/.test(data.winner_email)) {
       return NextResponse.json({ success: true, skipped: true })
+    }
+
+    const winClaim = `auction-winner-customer:${id}`
+    if (claimOnce(winClaim)) {
+      const customer = await upsertCustomer({ email: data.winner_email, acquisition_source: 'auction', tags: ['Auction Winner'] })
+      const { error: statsError } = await supabase.from('customers').update({ auctions_won: Number(customer.auctions_won ?? 0) + 1, last_activity_at: new Date().toISOString() }).eq('id', customer.id)
+      if (statsError) console.error('Auction win customer stats update failed:', statsError)
     }
 
     await sendAuctionWinEmail({
