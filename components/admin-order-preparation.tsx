@@ -240,6 +240,6 @@ export function AdminOrderPreparation({ order, onClose, onProcessing, onShip, sh
       </div></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="text-xs font-semibold">Carrier<input value={shipment.carrier} onChange={(event) => onShipmentChange({ ...shipment, carrier: event.target.value })} className="mt-1 w-full border border-neutral-300 px-3 py-2 text-sm" placeholder="USPS, UPS, etc." /></label><label className="text-xs font-semibold">Tracking number<input value={shipment.trackingNumber} onChange={(event) => onShipmentChange({ ...shipment, trackingNumber: event.target.value })} className="mt-1 w-full border border-neutral-300 px-3 py-2 text-sm" placeholder="Tracking number" /></label></div><Button disabled={busy} onClick={onShip} className="mt-3 w-full bg-neutral-900 text-white hover:bg-neutral-800 border border-neutral-900"><Check data-icon="inline-start" />{busy ? 'Saving shipment…' : 'Mark shipped & send tracking'}</Button></section>
     </div>
   </section></div>
-  {printSlipOpen && <ThermalPackingSlip orders={selectedOrders.length > 0 ? allOrders.filter(o => selectedOrders.includes(o.id)) : [order]} onClose={() => setPrintSlipOpen(false)} />}
+
 
 }
