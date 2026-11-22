@@ -198,3 +198,10 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  body > *:not(.packing-slip-container) {
+    display: none !important;
+  }
+}
+

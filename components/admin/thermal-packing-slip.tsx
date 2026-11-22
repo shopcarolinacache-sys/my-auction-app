@@ -190,9 +190,9 @@ export function ThermalPackingSlip({ orders, onClose }: { orders: Order[]; onClo
         <header className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
           <h2 id="print-title" className="text-xl font-black">Print Packing Slip{orders.length > 1 ? `s (${orders.length})` : ''}</h2>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setPrintMode('thermal')} disabled={printMode === 'thermal'}>4x6 Thermal</Button>
-            <Button variant="outline" onClick={() => setPrintMode('letter')} disabled={printMode === 'letter'}>8.5x11 Letter</Button>
-            <Button onClick={handlePrint}><Printer data-icon="inline-start" />Print Now</Button>
+            <Button variant="outline" className="bg-neutral-900 text-white hover:bg-neutral-800 border border-neutral-900" onClick={() => setPrintMode('thermal')} disabled={printMode === 'thermal'}>4x6 Thermal</Button>
+            <Button variant="outline" className="bg-neutral-900 text-white hover:bg-neutral-800 border border-neutral-900" onClick={() => setPrintMode('letter')} disabled={printMode === 'letter'}>8.5x11 Letter</Button>
+            <Button className="bg-neutral-900 text-white hover:bg-neutral-800 border border-neutral-900" onClick={handlePrint}><Printer data-icon="inline-start" />Print Now</Button>
             <Button type="button" aria-label="Close print preview" onClick={onClose} className="grid size-9 place-items-center border border-neutral-200 hover:bg-neutral-50"><X className="size-4" /></Button>
           </div>
         </header>
