@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendOrderNotifications } from "@/lib/email";
+import { upsertCustomer } from "@/lib/customers";
 import { isRateLimited, isValidEmail } from "@/lib/request-security";
 
 export async function POST(req: Request) {
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
       total = 0,
       shipping_carrier = "Standard",
       shipping_service = "Insured",
+      marketing_opt_in = false,
     } = body;
 
     if (
@@ -43,6 +45,21 @@ export async function POST(req: Request) {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
+    let customerId: string | null = null;
+    let customerRecord: Awaited<ReturnType<typeof upsertCustomer>> | null = null;
+    try {
+      customerRecord = await upsertCustomer({
+        email: customer_email,
+        full_name: customer_name,
+        default_shipping_address: shipping_address,
+        acquisition_source: "checkout",
+        marketing_opt_in: marketing_opt_in === true,
+        favorite_categories: items.map((item: any) => item.category).filter((category: unknown): category is string => typeof category === "string"),
+      });
+      customerId = customerRecord.id;
+    } catch (customerError) {
+      console.error("Customer upsert failed during checkout:", customerError);
+    }
 
     let totalWeightOz = 0;
     let maxLength = 10;
@@ -92,7 +109,8 @@ export async function POST(req: Request) {
       .insert({
         order_number: orderNumber,
         customer_name,
-        customer_email,
+        customer_email: customer_email.trim().toLowerCase(),
+        customer_id: customerId,
         shipping_address,
         items,
         subtotal: Number(subtotal),
@@ -116,6 +134,15 @@ export async function POST(req: Request) {
     if (error) {
       console.error("Supabase order insert error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (customerId && customerRecord) {
+      const { error: customerStatsError } = await supabase.from("customers").update({
+        total_orders: Number(customerRecord.total_orders ?? 0) + 1,
+        total_spent: Number(customerRecord.total_spent ?? 0) + Number(total),
+        last_activity_at: new Date().toISOString(),
+      }).eq("id", customerId);
+      if (customerStatsError) console.error("Customer order stats update failed:", customerStatsError);
     }
 
     let notificationsSent = true;

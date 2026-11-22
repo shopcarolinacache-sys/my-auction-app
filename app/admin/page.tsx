@@ -5,6 +5,7 @@ import { getBrowserSupabase } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import InventoryManagement from './inventory';
 import AdminOrders from '@/components/admin-orders';
+import AdminCustomers from '@/components/admin-customers';
 import AdminOverview from '@/components/admin-overview';
 import { AdminReplays } from '@/components/admin-replays';
 import { AdminRecentWins } from '@/components/admin-recent-wins';
@@ -254,7 +255,7 @@ export default function AdminWorkspacePage() {
 
       {/* Main Workspace */}
       <main className="min-w-0 flex-1 space-y-6 overflow-y-auto p-4 sm:space-y-8 sm:p-8">
-        {activeSection === 'Overview' ? <AdminOverview onNavigate={setActiveSection} /> : activeSection === 'Inventory' ? <InventoryManagement /> : activeSection === 'Orders' ? <AdminOrders /> : activeSection === 'Replays' ? <AdminReplays /> : activeSection === 'Recent Wins' ? <AdminRecentWins /> : activeSection === 'Auctions' ? <>
+        {activeSection === 'Overview' ? <AdminOverview onNavigate={setActiveSection} /> : activeSection === 'Inventory' ? <InventoryManagement /> : activeSection === 'Orders' ? <AdminOrders /> : activeSection === 'Customers' ? <AdminCustomers /> : activeSection === 'Replays' ? <AdminReplays /> : activeSection === 'Recent Wins' ? <AdminRecentWins /> : activeSection === 'Auctions' ? <>
         {/* Top Header */}
         <div className="flex justify-between items-center">
           <div>

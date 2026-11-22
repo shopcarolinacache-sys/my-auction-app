@@ -17,6 +17,7 @@ export default function CheckoutPage() {
   const [city, setCity] = useState('')
   const [stateCode, setStateCode] = useState('')
   const [zip, setZip] = useState('')
+  const [marketingOptIn, setMarketingOptIn] = useState(false)
 
   const protectionFee = subtotal > 100 ? Math.max(1, Math.ceil(subtotal * 0.01)) : 0
   const [baseShipping, setBaseShipping] = useState<number>(18)
@@ -122,8 +123,10 @@ export default function CheckoutPage() {
           items: lines.map(({ product, quantity }) => ({
             id: product.id,
             name: product.name || product.title,
+            sku: product.sku || product.id,
             price: product.price,
             quantity,
+            category: product.categoryLabel || product.category,
           })),
           subtotal,
           shipping_cost: baseShipping,
@@ -131,6 +134,7 @@ export default function CheckoutPage() {
           total,
           shipping_carrier: carrierInfo.carrier,
           shipping_service: carrierInfo.service,
+          marketing_opt_in: marketingOptIn,
         }),
       })
 
@@ -181,6 +185,11 @@ export default function CheckoutPage() {
                 <input required value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="ZIP" aria-label="ZIP" inputMode="numeric" maxLength={5} className="border border-neutral-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600" />
               </div>
             </fieldset>
+
+            <label className="flex items-start gap-3 border border-neutral-200 bg-white p-4 text-sm text-neutral-700">
+              <input type="checkbox" checked={marketingOptIn} onChange={(event) => setMarketingOptIn(event.target.checked)} className="mt-0.5 size-4 accent-emerald-700" />
+              <span>Email me about new drops &amp; live auctions</span>
+            </label>
 
             <fieldset className="space-y-4">
               <legend className="text-lg font-black">02 / Payment</legend>

@@ -32,6 +32,12 @@ async function deliverEmail(message: { to: string; subject: string; text: string
   if (error) throw new Error('Email delivery failed.')
 }
 
+export async function sendCustomerDirectEmail(input: { to: string; customerName: string; subject: string; message: string }) {
+  const greeting = input.customerName.trim() ? `Hello ${input.customerName.trim()},\n\n` : ''
+  const { error } = await getResend().emails.send({ from: 'Shop Carolina Cache <hello@shopcarolinacache.com>', to: input.to, subject: input.subject, text: `${greeting}${input.message.trim()}\n\nShop Carolina Cache`, html: brandedEmail(input.subject, `<p style="font-size:15px;line-height:1.7;white-space:pre-wrap">${escapeHtml(`${greeting}${input.message.trim()}`)}</p>`), replyTo: replyToAddress })
+  if (error) throw new Error('Email delivery failed.')
+}
+
 export async function sendContactEmail(input: { subject: string; text: string; replyTo: string; customerName?: string; category?: string; message?: string; acknowledge?: boolean }) {
   const category = input.category || 'General Question'
   const visitorMessage = input.message || input.text
