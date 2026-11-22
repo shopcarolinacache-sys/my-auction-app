@@ -1,69 +1,110 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
-export async function POST(req: Request) {
-  const supabase = createRouteHandlerClient({ cookies })
-  const { data: { user } } = await supabase.auth.getUser()
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return null
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+}
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function POST() {
+  const supabase = getSupabaseAdmin()
+  if (!supabase) {
+    return NextResponse.json(
+      { synced: 0, failed: 0, total: 0, errors: [{ email: 'system', message: 'Missing Supabase env vars', code: 'ENV_MISSING', details: null, hint: null }] },
+      { status: 500 }
+    )
   }
 
-  const orderRows: Array<{ id: string; customer_name: string; customer_email: string; shipping_address: unknown; total: number }> = []
-  for (let offset = 0; ; offset += 1000) {
-    const { data, error } = await supabase.from('orders').select('id,customer_name,customer_email,shipping_address,total,created_at').order('created_at', { ascending: false }).range(offset, offset + 999)
-    if (error) {
-      console.error('Order sync failed:', error)
-      return NextResponse.json({ error: `Order sync failed: ${error.message}`, code: error.code }, { status: 500 })
+  const { data: orders, error: ordersError } = await supabase
+    .from('orders')
+    .select('id, customer_email, customer_name, customer_phone, shipping_address, created_at')
+    .order('created_at', { ascending: false })
+
+  if (ordersError) {
+    return NextResponse.json(
+      { synced: 0, failed: 0, total: 0, errors: [{ email: 'orders', message: ordersError.message, code: ordersError.code ?? null, details: ordersError.details ?? null, hint: ordersError.hint ?? null }] },
+      { status: 500 }
+    )
+  }
+
+  const grouped = new Map<string, { email: string; full_name: string | null; phone: string | null; default_shipping_address: unknown; orderIds: string[] }>()
+
+  for (const row of orders ?? []) {
+    const email = (row.customer_email ?? '').trim().toLowerCase()
+    if (!email) continue
+    const existing = grouped.get(email)
+    if (!existing) {
+      grouped.set(email, {
+        email,
+        full_name: row.customer_name?.trim() || null,
+        phone: row.customer_phone?.trim() || null,
+        default_shipping_address: row.shipping_address ?? null,
+        orderIds: [row.id],
+      })
+    } else {
+      if (!existing.full_name && row.customer_name?.trim()) existing.full_name = row.customer_name.trim()
+      if (!existing.phone && row.customer_phone?.trim()) existing.phone = row.customer_phone.trim()
+      if (!existing.default_shipping_address && row.shipping_address) existing.default_shipping_address = row.shipping_address
+      existing.orderIds.push(row.id)
     }
-    orderRows.push(...(data ?? []) as typeof orderRows)
-    if (!data || data.length < 1000) break
   }
 
-  const grouped = new Map<string, { email: string; full_name: string; address: unknown; total: number; orders: number; orderIds: string[] }>()
-  for (const order of orderRows) {
-    const email = String(order.customer_email ?? '').trim().toLowerCase(); if (!email) continue
-    const previous = grouped.get(email) ?? { email, full_name: order.customer_name ?? '', address: order.shipping_address, total: 0, orders: 0, orderIds: [] }
-    previous.total += Number(order.total ?? 0); previous.orders += 1; previous.orderIds.push(order.id)
-    grouped.set(email, previous)
-  }
-
+  let synced = 0
   let failed = 0
-  const errors: Array<{ email: string; message: string; code: string | null }> = []
+  const errors: Array<{ email: string; message: string; code: string | null; details: string | null; hint: string | null }> = []
 
-  // Fetch existing customers to get their current full_name and default_shipping_address
-  const { data: existingCustomers, error: fetchError } = await supabase.from('customers').select('id,email,full_name,default_shipping_address')
-  if (fetchError) {
-    console.error('Failed to fetch existing customers:', fetchError)
-    return NextResponse.json({ error: `Failed to fetch existing customers: ${fetchError.message}`, code: fetchError.code }, { status: 500 })
-  }
-  const existingCustomersMap = new Map(existingCustomers?.map(c => [c.email.toLowerCase(), c]))
+  for (const [, customer] of grouped) {
+    const { data: upserted, error: upsertError } = await supabase
+      .from('customers')
+      .upsert(
+        {
+          email: customer.email,
+          full_name: customer.full_name,
+          phone: customer.phone,
+          default_shipping_address: customer.default_shipping_address,
+        },
+        { onConflict: 'email' }
+      )
+      .select('id')
+      .single()
 
-  for (const customer of grouped.values()) {
-    const current = existingCustomersMap.get(customer.email)
-    const upsertData = {
-      email: customer.email,
-      full_name: customer.full_name || current?.full_name,
-      default_shipping_address: customer.address ?? current?.default_shipping_address,
-      total_orders: customer.orders,
-      total_spent: customer.total,
-      last_activity_at: new Date().toISOString()
-    }
-    const result = await supabase.from('customers').upsert(upsertData, { onConflict: 'email' }).select('id').single()
-    if (result.error || !result.data?.id) {
+    if (upsertError || !upserted) {
       failed++
-      errors.push({ email: customer.email, message: result.error?.message || 'Unknown error during upsert', code: result.error?.code || null })
-      console.error(`Failed to upsert customer ${customer.email}:`, result.error)
+      errors.push({
+        email: customer.email,
+        message: upsertError?.message || 'Upsert failed',
+        code: upsertError?.code ?? null,
+        details: upsertError?.details ?? null,
+        hint: upsertError?.hint ?? null,
+      })
       continue
     }
-    const { error: linkError } = await supabase.from('orders').update({ customer_id: result.data.id }).in('id', customer.orderIds)
-    if (linkError) {
-      failed++
-      errors.push({ email: customer.email, message: `Failed to link orders: ${linkError.message}`, code: linkError.code || null })
-      console.error(`Failed to link orders for customer ${customer.email}:`, linkError)
+
+    if (customer.orderIds.length > 0) {
+      const { error: linkError } = await supabase
+        .from('orders')
+        .update({ customer_id: upserted.id })
+        .in('id', customer.orderIds)
+
+      if (linkError) {
+        failed++
+        errors.push({
+          email: customer.email,
+          message: linkError.message,
+          code: linkError.code ?? null,
+          details: linkError.details ?? null,
+          hint: linkError.hint ?? null,
+        })
+        continue
+      }
     }
+
+    synced++
   }
 
-  return NextResponse.json({ failed, total: grouped.size, errors }, { status: 200 })
+  return NextResponse.json({ synced, failed, total: grouped.size, errors }, { status: 200 })
 }
