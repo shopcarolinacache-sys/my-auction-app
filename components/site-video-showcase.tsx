@@ -2,6 +2,20 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 
+interface NavigatorWithConnection extends Navigator {
+  connection?: {
+    saveData?: boolean;
+  };
+}
+
+const hasSaveDataEnabled = (): boolean => {
+  if (typeof navigator !== 'undefined') {
+    const nav = navigator as NavigatorWithConnection;
+    return nav.connection?.saveData === true;
+  }
+  return false;
+};
+
 export function SiteVideoShowcase() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -11,7 +25,7 @@ export function SiteVideoShowcase() {
     if (!video) return;
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const saveData = navigator.connection?.saveData;
+    const saveData = hasSaveDataEnabled();
 
     const observer = new IntersectionObserver(
       (entries) => {
