@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { publicContactEmail } from '@/lib/email-config'
 import { NewsletterSignup } from '@/components/newsletter-signup'
 
 const footerLinkClass = 'text-sm text-zinc-400 transition hover:text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400'
@@ -32,15 +31,15 @@ export function StorefrontFooter() {
             <li><Link className={footerLinkClass} href="/#collection">Shop all</Link></li>
             <li><Link className={footerLinkClass} href="/#live-auctions">Live auctions</Link></li>
             <li><Link className={footerLinkClass} href="/#request">Source an item</Link></li>
-            <li><a className={footerLinkClass} href={`mailto:${publicContactEmail}?subject=Rewards%20Club`}>Rewards club</a></li>
+            <li><Link className={footerLinkClass} href="/rewards">Rewards club</Link></li>
           </ul>
         </nav>
         <nav aria-label="Support">
           <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-200">Support</h2>
           <ul className="mt-5 flex flex-col gap-3">
-            <li><a className={footerLinkClass} href={`mailto:${publicContactEmail}`}>Contact</a></li>
-            <li><Link className={footerLinkClass} href="/checkout">Insured shipping &amp; returns</Link></li>
-            <li><a className={footerLinkClass} href={`mailto:${publicContactEmail}?subject=Authentication%20guarantee`}>Authentication guarantee</a></li>
+            <li><Link className={footerLinkClass} href="/contact">Contact</Link></li>
+            <li><Link className={footerLinkClass} href="/insured-shipping">Insured shipping</Link></li>
+            <li><Link className={footerLinkClass} href="/authentication-guarantee">Authentication guarantee</Link></li>
           </ul>
         </nav>
         <nav aria-label="Legal and payment methods">
