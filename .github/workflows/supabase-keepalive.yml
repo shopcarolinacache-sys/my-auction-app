@@ -1,0 +1,23 @@
+name: Keep Supabase Active
+
+on:
+  schedule:
+    # Runs every Monday and Thursday at 9:00 AM UTC (well within the 7-day window)
+    - cron: '0 9 * * 1,4'
+  workflow_dispatch: # Lets you trigger a manual test run anytime
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/products?select=id&limit=1")
+          echo "Supabase response HTTP status: $STATUS"
+          if [ "$STATUS" -ge 400 ]; then
+            echo "Ping failed with status $STATUS"
+            exit 1
+          fi
