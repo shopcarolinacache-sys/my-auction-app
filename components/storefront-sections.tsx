@@ -47,30 +47,33 @@ export function StorefrontHeader() {
     setSearchOpen(false)
   }
 
-  return <header className="sticky top-0 z-30 border-b border-neutral-200 bg-[#f7f7f4]/95 backdrop-blur-sm">
-    <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-5 gap-y-3 px-5 py-4 sm:px-8 lg:px-10">
-      <a href="#top" className="shrink-0 font-serif text-2xl font-black tracking-[-0.07em] sm:text-3xl">Carolina <span className="text-emerald-700">Cache</span></a>
-      <form onSubmit={focusCollection} role="search" className="order-2 hidden min-w-0 flex-1 md:flex">
-        <label htmlFor="desktop-search" className="mx-auto flex w-full max-w-xl items-center gap-3 border border-neutral-300 bg-white px-4 py-2.5 text-sm">
+  return <header className="sticky top-0 z-30 border-b border-[#e7e1d5] bg-[#F7F4EC]/95 text-[#1F2421] backdrop-blur-sm">
+    <div className="mx-auto flex max-w-7xl items-center gap-5 px-4 py-3 sm:px-8 lg:px-10">
+      <a href="#top" aria-label="Carolina Cache home" className="flex min-w-0 shrink-0 items-center gap-2.5">
+        <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full sm:size-12"><img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/CCHEADER-UCvPQYQYJMaBnokhLOUiEPWfP4sB6S.jpg" alt="" className="size-full scale-[1.55] object-cover" /></span>
+        <span className="hidden whitespace-nowrap font-serif text-[1.65rem] font-bold leading-none tracking-[-0.06em] sm:inline">Carolina <span className="text-[#1B4332]">Cache</span></span>
+      </a>
+      <nav aria-label="Primary navigation" className="hidden items-center gap-3 text-[9px] font-semibold uppercase tracking-[0.08em] sm:flex lg:gap-5 lg:text-[10px] lg:tracking-[0.13em]">
+        <a className="transition hover:text-[#1B4332]" href="#collection">Shop</a>
+        <a className="transition hover:text-[#1B4332]" href="#live-auctions">Auctions</a>
+        <a className="transition hover:text-[#1B4332]" href="#request">Source an item</a>
+      </nav>
+      <form onSubmit={focusCollection} role="search" className="hidden min-w-0 flex-1 md:flex">
+        <label htmlFor="desktop-search" className="mx-auto flex w-full max-w-sm items-center gap-3 border-b border-[#c9c3b7] px-2 py-2 text-sm">
           <Search aria-hidden="true" className="size-4 shrink-0 text-neutral-500" />
-          <input id="desktop-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search the archive" className="w-full bg-transparent outline-none placeholder:text-neutral-400" />
-          <button type="submit" className="border-l border-neutral-200 pl-3 text-[10px] font-bold uppercase tracking-widest text-neutral-500 hover:text-emerald-800">Search</button>
+          <input id="desktop-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search the archive" className="w-full bg-transparent outline-none placeholder:text-neutral-500" />
+          <button type="submit" className="text-[10px] font-semibold uppercase tracking-widest text-neutral-600 transition hover:text-[#1B4332]">Search</button>
         </label>
       </form>
-      <div className="order-2 ml-auto flex items-center gap-3 md:order-4 md:ml-0">
-        <button type="button" aria-label="Open search" aria-expanded={searchOpen} aria-controls="mobile-search" onClick={() => setSearchOpen((current) => !current)} className="grid size-9 place-items-center border border-neutral-300 bg-white text-neutral-700 transition hover:border-emerald-700 hover:text-emerald-800 md:hidden"><Search className="size-4" /></button>
+      <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+        <button type="button" aria-label="Open search" aria-expanded={searchOpen} aria-controls="mobile-search" onClick={() => setSearchOpen((current) => !current)} className="grid size-9 place-items-center text-neutral-700 transition hover:text-[#1B4332] md:hidden"><Search className="size-4" /></button>
         <div className="relative">
-          <button type="button" aria-label="Account" aria-haspopup="true" aria-expanded={profileOpen} onClick={() => authenticated ? setProfileOpen((current) => !current) : openModal()} className="grid size-9 place-items-center border border-neutral-300 bg-white text-neutral-700 transition hover:border-emerald-700 hover:text-emerald-800"><UserRound className="size-4" />{authenticated && <span className="absolute right-0 top-0 size-2 rounded-full bg-emerald-500" />}</button>
+          <button type="button" aria-label="Account" aria-haspopup="true" aria-expanded={profileOpen} onClick={() => authenticated ? setProfileOpen((current) => !current) : openModal()} className="grid size-9 place-items-center text-neutral-700 transition hover:text-[#1B4332]"><UserRound className="size-4" />{authenticated && <span className="absolute right-0 top-0 size-2 rounded-full bg-emerald-700" />}</button>
           {authenticated && profileOpen && <div className="absolute right-0 top-full z-40 mt-3 w-60 border border-neutral-200 bg-white p-2 text-neutral-900 shadow-xl"><div className="flex items-center gap-2 border-b border-neutral-100 px-3 py-3"><ShieldCheck className="size-4 text-emerald-700" /><span className="text-xs font-bold normal-case tracking-normal">Admin Mode</span></div><button type="button" onClick={toggleEditMode} className="flex w-full items-center gap-2 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal hover:bg-neutral-50"><PencilLine className="size-4" />{editMode ? 'Turn off inline editing' : 'Edit site content inline'}</button><Link href="/admin" onClick={() => setProfileOpen(false)} className="block px-3 py-3 text-xs font-semibold normal-case tracking-normal hover:bg-neutral-50">Open Admin Panel</Link><button type="button" onClick={() => { logout(); setProfileOpen(false); setEditMode(false); delete document.body.dataset.adminEditMode; document.querySelectorAll<HTMLElement>('main h1, main h2, main h3, main p').forEach((element) => { element.contentEditable = 'false'; element.classList.remove('outline-dashed', 'outline-emerald-500', 'outline-offset-2') }) }} className="flex w-full items-center gap-2 border-t border-neutral-100 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-neutral-500 hover:text-neutral-900"><LogOut className="size-4" />Sign out</button></div>}
         </div>
         <CartButton />
       </div>
-      <nav aria-label="Primary navigation" className="order-4 flex w-full items-center justify-between border-t border-neutral-200 pt-3 text-[9px] font-bold uppercase tracking-[0.1em] sm:justify-start sm:gap-6 md:order-3 md:w-auto md:border-0 md:pt-0 md:text-[10px] md:tracking-[0.14em]">
-        <a className="hover:text-emerald-700" href="#collection">Shop</a>
-        <a className="hover:text-emerald-700" href="#live-auctions">Live Auctions</a>
-        <a className="hover:text-emerald-700" href="#request">Source an Item</a>
-      </nav>
-      {searchOpen && <form id="mobile-search" onSubmit={focusCollection} role="search" className="order-5 w-full md:hidden">
+      {searchOpen && <form id="mobile-search" onSubmit={focusCollection} role="search" className="absolute inset-x-0 top-full border-b border-[#e7e1d5] bg-[#F7F4EC] px-4 pb-3 md:hidden">
         <label htmlFor="mobile-search-input" className="flex items-center gap-3 border border-neutral-300 bg-white px-4 py-2.5 text-sm">
           <Search aria-hidden="true" className="size-4 shrink-0 text-neutral-500" />
           <input id="mobile-search-input" type="search" autoFocus value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search the archive" className="w-full bg-transparent outline-none placeholder:text-neutral-400" />
