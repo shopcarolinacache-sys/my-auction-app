@@ -18,7 +18,7 @@ export function StorefrontFooter() {
     <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-10">
       <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-12">
         <section aria-labelledby="footer-brand">
-          <h2 id="footer-brand" className="font-serif text-3xl font-black tracking-[-0.07em] text-white">Carolina <span className="text-emerald-400">Cache</span></h2>
+          <h2 id="footer-brand" className="font-serif text-3xl font-black tracking-[-0.07em] text-white">Carolina Cache</h2>
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-zinc-400">A considered archive of rare finds, collector-grade objects, and Carolina stories. Curated for the curious, sourced with care.</p>
           <div className="mt-6 border-t border-zinc-800 pt-5">
             <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-200">Notes from the Cache</h3>

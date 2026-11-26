@@ -213,14 +213,9 @@ export default function AdminWorkspacePage() {
       {/* Sidebar */}
       <aside className="flex w-full flex-col space-y-4 bg-black p-4 text-white sm:w-64 sm:space-y-8 sm:p-6">
         <div>
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-emerald-400 rounded flex items-center justify-center text-black font-bold text-lg">
-              CC
-            </div>
-            <div>
-              <h1 className="font-bold text-base leading-tight">Carolina Cache</h1>
-              <span className="text-xs text-neutral-400 tracking-wider uppercase">Admin Studio</span>
-            </div>
+          <div>
+            <h1 className="font-bold text-base leading-tight">Carolina Cache</h1>
+            <span className="text-xs text-neutral-400 tracking-wider uppercase">Admin Studio</span>
           </div>
         </div>
 
