@@ -2,7 +2,7 @@ name: Keep Supabase Active
 
 on:
   schedule:
-    # Runs every Monday and Thursday at 9:00 AM UTC (well within the 7-day window)
+    # Runs every Monday and Thursday at 9:00 AM UTC
     - cron: '0 9 * * 1,4'
   workflow_dispatch: # Lets you trigger a manual test run anytime
 
@@ -13,19 +13,23 @@ jobs:
       - name: Ping Supabase REST API
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
-            echo "Missing SUPABASE_URL or SUPABASE_ANON_KEY secret"
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_PUBLISHABLE_KEY" ]; then
+            echo "Error: SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY secret is missing or empty."
             exit 1
           fi
 
+          BASE_URL="${SUPABASE_URL%/}"
+          BASE_URL="${BASE_URL%/rest/v1}"
+
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "apikey: $SUPABASE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_KEY" \
-            "${SUPABASE_URL%/}/rest/v1/products?select=id&limit=1")
+            -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_PUBLISHABLE_KEY" \
+            "$BASE_URL/rest/v1/products?select=id&limit=1")
 
           echo "Supabase response HTTP status: $STATUS"
+
           if [ "$STATUS" -ge 400 ]; then
             echo "Ping failed with status $STATUS"
             exit 1
